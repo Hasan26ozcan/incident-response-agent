@@ -20,7 +20,11 @@ Lightweight, CLI-driven spec workflow: `spec.md` → `plan.md` → `tasks.md`,
 designed to slot into an existing repo and pair naturally with
 Copilot/Claude Code style coding agents. Minimal ceremony, fast to adopt,
 git-native. Weaker at modeling *why* a decision was made once several
+<<<<<<< HEAD
 specs have accumulated — it's oriented around a single feature's lifecycle
+=======
+specs accumulate — it's oriented around a single feature's lifecycle
+>>>>>>> 60eb90cfe3ed360fa4b33aae3322fe3b15f103ef
 rather than a long-running log of changes and approvals.
 
 ## OpenSpec
@@ -29,7 +33,11 @@ Change-proposal-centric: specs are the source of truth, and every
 modification is an explicit, reviewable **proposal** (`openspec/changes/…`)
 that must be approved before implementation and is archived afterward.
 This produces a durable, diffable history of *what changed and why* —
+<<<<<<< HEAD
 closer to an ADR (Architecture Decision Record) log cross-referenced with a living spec.
+=======
+closer to an ADR (Architecture Decision Record) log crossed with a spec.
+>>>>>>> 60eb90cfe3ed360fa4b33aae3322fe3b15f103ef
 
 ## Why OpenSpec for this project
 
