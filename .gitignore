@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+
+# Node
+node_modules/
+
+# Docker / sandbox artifacts
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Eval / data artifacts (added when Stage 1+ lands)
+/data/generated/
+/eval/results/
