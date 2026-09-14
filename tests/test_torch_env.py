@@ -1,8 +1,7 @@
 """Verify the test environment has torch and numpy working correctly."""
-import sys
 
-import torch
 import numpy as np
+import torch
 
 
 def test_torch_available():
