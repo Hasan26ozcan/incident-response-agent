@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  incident-response:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: incident-response-agent
+    working_dir: /app
+    volumes:
+      - .:/app
+      - .venv:/app/.venv
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python -m pytest tests/ -v
+    stdin_open: true
+    tty: true
+
+  # Optional: run quality checks
+  quality:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ira-quality
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: sh -c "ruff check data/ eval/ tests/ --exclude .venv && mypy data/ eval/ tests/ --ignore-missing-imports && bandit -r data/ eval/ tests/ --configfile bandit.yml"
+    stdin_open: true
+    tty: true
