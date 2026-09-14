@@ -18,10 +18,5 @@ node_modules/
 .DS_Store
 
 # Eval / data artifacts (added when Stage 1+ lands)
-<<<<<<< HEAD
 data/generated/
 eval/results/
-=======
-/data/generated/
-/eval/results/
->>>>>>> 60eb90cfe3ed360fa4b33aae3322fe3b15f103ef
