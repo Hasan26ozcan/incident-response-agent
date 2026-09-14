@@ -1,0 +1,10 @@
+# Bandit configuration for incident-response-agent
+# These skips are intentional:
+# - B311: random.Random with seed is for deterministic dataset generation, not cryptographic use
+# - B404/B603: subprocess in test harness runs fixed project scripts with known paths
+# - B101: assert is standard pytest practice
+skips:
+  - B311  # deterministic seeded random for dataset generation
+  - B404  # subprocess import in test harness
+  - B603  # subprocess.run with fixed path in test runner
+  - B101  # assert statements in tests are standard pytest

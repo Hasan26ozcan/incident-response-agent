@@ -275,7 +275,9 @@ def gen_deploys(service, deploy_specs):
 
 # ---------------------------------------------------------------------------
 # Scenario definitions — 20 scenarios covering the categories called out in
-# the roadmap ("CPU/memory/cascading failure/deploy error/DB pool
+# ruff: noqa: C408  # dict() keyword-arg calls are intentional for readability
+# ruff: noqa: E501  # long string literals in scenario definitions
+# nosec: B311       # random.Random with seed is for deterministic generation, not crypto
 # exhaustion/etc.") plus enough additional categories, distractor pairs,
 # a false alarm, and a recurrence pair to exercise every later stage.
 # ---------------------------------------------------------------------------
