@@ -1,0 +1,23 @@
+{
+  "root_cause": "An unbounded retry loop in checkout-api's payment-confirmation handler pins a worker thread at 100% CPU per affected request, starving the thread pool.",
+  "evidence": [
+    "metric:cpu_percent ramps 22%\u219297% starting minute 40",
+    "metric:latency_p99_ms ramps in lockstep from minute 41",
+    "log: repeated 'possible unbounded loop detected in retry handler' from checkout-api starting minute 40"
+  ],
+  "recommended_remediation": "Restart the affected checkout-api pods to shed the stuck threads, then patch the retry handler to cap retry attempts.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Restarting a production service pod is an explicit high-risk action per the risk classification.",
+  "incident_id": "INC-001",
+  "title": "cpu runaway retry loop",
+  "category": "cpu_exhaustion",
+  "difficulty": "easy",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "19"
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T15:40:00+00:00",
+    "service": "checkout-api",
+    "version": "n/a",
+    "description": "config: MAX_RETRIES override for prod set to 10 during a since-resolved past incident, never reverted"
+  }
+]

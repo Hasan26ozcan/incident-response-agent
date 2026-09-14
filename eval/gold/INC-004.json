@@ -1,0 +1,23 @@
+{
+  "root_cause": "v2.4.0's OrderValidator refactor fails to null-check the new gift-card field, throwing a NullPointerException on any order without a gift card.",
+  "evidence": [
+    "log: 'NullPointerException in OrderValidator.validate' starting minute 15",
+    "metric:error_rate_pct steps sharply from 0.4% to ~22% at minute 15",
+    "deploy: checkout-api v2.4.0 deployed 2 minutes before the window starts, matching the error onset"
+  ],
+  "recommended_remediation": "Roll back checkout-api to v2.3.x immediately; fix the null-check before re-attempting v2.4.0.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Deploy rollback is explicitly high-risk.",
+  "incident_id": "INC-004",
+  "title": "bad deploy order validator npe",
+  "category": "bad_deploy",
+  "difficulty": "easy",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "19"
+  ]
+}

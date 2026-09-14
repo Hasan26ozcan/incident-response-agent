@@ -1,0 +1,23 @@
+{
+  "root_cause": "v1.8.0 added a synchronous per-message audit-log write, roughly 8x-ing per-message processing time and causing consumers to fall behind the publish rate.",
+  "evidence": [
+    "metric:consumer_lag_msgs climbs from ~200 baseline to ~95000 over the window",
+    "log: 'consumer lag increased to ... messages' escalating warnings",
+    "log: 'consumer group rebalance triggered repeatedly' \u2014 a symptom of consumers being killed for missing heartbeats while blocked on the slow audit write",
+    "deploy: v1.8.0 5 minutes before window start matches onset timing"
+  ],
+  "recommended_remediation": "Roll back v1.8.0 or make the audit-log write asynchronous; scale out consumer replicas temporarily to drain the backlog.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback plus scaling replicas are both explicitly high-risk actions.",
+  "incident_id": "INC-011",
+  "title": "mq consumer lag notifications",
+  "category": "mq_backlog",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "19"
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:20:00+00:00",
+    "service": "platform-metrics-server",
+    "version": "n/a",
+    "description": "platform: metrics-server upgraded to v0.7.2"
+  }
+]

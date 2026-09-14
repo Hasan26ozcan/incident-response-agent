@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T20:40:00+00:00",
+    "service": "checkout-api",
+    "version": "1.9.0",
+    "description": "Routine dependency bump, no logic change"
+  }
+]

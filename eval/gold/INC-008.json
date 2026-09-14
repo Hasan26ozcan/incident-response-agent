@@ -1,0 +1,23 @@
+{
+  "root_cause": "The external card-network payment gateway is down (confirmed by their public status page), returning 503s to all outbound calls.",
+  "evidence": [
+    "log: 'payment-gateway API returned 503 Service Unavailable' starting minute 10",
+    "log: 'circuit breaker OPEN for external payment-gateway' shortly after",
+    "metric:error_rate_pct steps sharply and stays flat at the elevated level \u2014 consistent with a binary external outage, not a gradual internal degradation",
+    "no deploys in the window on payment-service"
+  ],
+  "recommended_remediation": "No internal fix available; enable the fallback payment provider if configured, and monitor the vendor's status page for resolution.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "Switching to a fallback provider is a visible, persistent routing change but does not touch production code paths \u2014 classified medium, escalate to high if it also requires a redeploy.",
+  "incident_id": "INC-008",
+  "title": "third party payment gateway outage",
+  "category": "third_party_outage",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "19"
+  ]
+}

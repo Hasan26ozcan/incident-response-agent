@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:56:00+00:00",
+    "service": "orders-service",
+    "version": "5.2.0",
+    "description": "orders-service: increased in-memory order cache size 4x"
+  }
+]

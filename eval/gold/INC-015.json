@@ -1,0 +1,24 @@
+{
+  "root_cause": "A MAX_RETRIES=10 override left over from an unrelated past incident (never reverted) causes checkout-api to retry aggressively once payment-service latency ticks up even slightly, amplifying load 3x and creating a retry storm.",
+  "evidence": [
+    "metric:request_rate_multiplier climbs to 3.2x baseline starting minute 30 with no corresponding increase in real user traffic",
+    "metric:latency_p99_ms follows shortly after \u2014 an effect of the retry storm, not its cause",
+    "log: 'config value MAX_RETRIES=10 in prod, expected 3' and 'unexpected retry storm traced to environment-specific override'",
+    "deploy: the stale config override predates this window by ~8 hours \u2014 the trigger was a minor, otherwise-unremarkable payment-service latency blip, not a new deploy"
+  ],
+  "recommended_remediation": "Revert MAX_RETRIES to 3 in prod config; audit for other stale incident-response overrides that were never cleaned up.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "A config value correction via existing config management, without a service redeploy, is treated as medium \u2014 escalate to high if applying it requires a restart.",
+  "incident_id": "INC-015",
+  "title": "config drift max retries prod",
+  "category": "config_drift",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "Both the recent deploy list and the immediate trigger (a minor latency blip) are red herrings; the real root cause is 8 hours stale and requires checking config state, not recent changes.",
+  "primary_stage_use": [
+    "6",
+    "9",
+    "19"
+  ]
+}

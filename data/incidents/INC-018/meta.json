@@ -1,0 +1,15 @@
+{
+  "incident_id": "INC-018",
+  "alert_name": "Alert: anomalous behavior detected \u2014 cart-service, orders-db",
+  "services": [
+    "cart-service",
+    "orders-db"
+  ],
+  "window_start": "2026-03-01T00:00:00+00:00",
+  "window_end": "2026-03-01T01:30:00+00:00",
+  "available_metrics": [
+    "db_cpu_pct",
+    "latency_p99_ms"
+  ],
+  "note": "This metadata is intentionally non-spoiler: it names the services and window but not the cause."
+}

@@ -1,0 +1,25 @@
+{
+  "root_cause": "payment-service's v4.0.1 TLS provider change introduced a slow handshake path; payment-service latency exceeds checkout-api's timeout, and checkout-api's own retries amplify the load, cascading into checkout-api errors.",
+  "evidence": [
+    "log: 'upstream service payment-service timeout after 5000ms' from checkout-api starting minute 25",
+    "log: 'circuit breaker OPEN for payment-service' shortly after",
+    "metric:error_rate_pct and latency_p99_ms both spike at minute 25-26, on checkout-api not payment-service directly",
+    "deploy: payment-service v4.0.1 (10 minutes before window start) is the only recent change"
+  ],
+  "recommended_remediation": "Roll back payment-service to the prior TLS provider configuration; verify checkout-api circuit breaker recovers.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback of a production service's config is high-risk.",
+  "incident_id": "INC-003",
+  "title": "cascading payment timeout",
+  "category": "cascading_failure",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "7",
+    "9",
+    "19"
+  ]
+}

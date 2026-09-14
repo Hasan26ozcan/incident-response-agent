@@ -1,0 +1,23 @@
+{
+  "root_cause": "Same underlying pattern as INC-002: v1.9.0 added an in-memory delivery-status cache with no eviction policy, causing unbounded heap growth \u2014 a different service, same class of bug.",
+  "evidence": [
+    "metric:memory_percent climbs steadily from minute 30, mirroring INC-002's shape",
+    "metric:gc_pause_ms spikes from minute 75, mirroring INC-002's timing pattern relative to the memory ramp",
+    "log: 'container OOMKilled by kubelet' entries late in the window",
+    "deploy: v1.9.0 added an unbounded in-memory cache 45 minutes before window start \u2014 same causal pattern as INC-002's v2.1.0 cache"
+  ],
+  "recommended_remediation": "Roll back to v1.8.x, add a bounded/TTL eviction policy to the new cache before re-deploying \u2014 identical remediation shape to INC-002.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback of a deploy is explicitly high-risk.",
+  "incident_id": "INC-020",
+  "title": "memory leak oom notifications recurrence",
+  "category": "memory_leak",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": "INC-002",
+  "distractor_note": "Designed to test Stage 12 episodic memory: an agent that retrieved and generalized from INC-002's post-mortem should diagnose this faster/more accurately than one seeing it cold, despite the different service name and cache field names.",
+  "primary_stage_use": [
+    "12",
+    "19"
+  ]
+}

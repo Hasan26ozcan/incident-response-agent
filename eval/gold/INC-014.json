@@ -1,0 +1,22 @@
+{
+  "root_cause": "auth-service's client secret was rotated in Vault, but checkout-api's cached secret volume wasn't refreshed, so it keeps presenting the old (now invalid) credential.",
+  "evidence": [
+    "log: '401 Unauthorized from downstream auth-service' starting minute 8",
+    "log: 'secret volume mount stale, using expired token'",
+    "deploy: secret rotation 6 minutes before window start matches onset exactly"
+  ],
+  "recommended_remediation": "Force a secret-volume remount / pod restart on checkout-api to pick up the new credential; add a post-rotation health check to the rotation runbook.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "This touches credentials and requires a service restart \u2014 both explicitly high-risk.",
+  "incident_id": "INC-014",
+  "title": "secret rotation auth failures",
+  "category": "secret_rotation_failure",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "19"
+  ]
+}

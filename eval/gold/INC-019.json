@@ -1,0 +1,24 @@
+{
+  "root_cause": "No real incident. A single transient CPU sampling blip (one data point) crossed the alerting threshold; all other signals \u2014 logs, latency, error rate \u2014 remain nominal throughout.",
+  "evidence": [
+    "metric:cpu_percent has exactly one elevated sample at minute 30, immediately returning to baseline",
+    "log stream contains only INFO-level 'health check ok' / 'metrics within normal range' entries for the entire window \u2014 no ERROR or WARN entries at all",
+    "no deploys in the window"
+  ],
+  "recommended_remediation": "No remediation needed. Close the alert as a false positive; consider adding a 2-consecutive-sample requirement to the alert rule to reduce noise.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No system-touching action is taken; only the alert rule's own config may be tuned, which is a low-stakes, non-production-facing change.",
+  "incident_id": "INC-019",
+  "title": "false alarm noisy cpu threshold",
+  "category": "false_alarm",
+  "difficulty": "easy",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": "This scenario exists specifically to test false-positive handling (referenced by risk-classification.md and the eval rubric's false-positive-rate metric) and to check agents don't hallucinate a root cause when none exists.",
+  "primary_stage_use": [
+    "6",
+    "8",
+    "19",
+    "20"
+  ]
+}

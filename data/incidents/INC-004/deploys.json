@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:58:00+00:00",
+    "service": "checkout-api",
+    "version": "2.4.0",
+    "description": "checkout-api: refactor OrderValidator to support gift-card orders"
+  }
+]

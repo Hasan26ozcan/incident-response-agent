@@ -1,0 +1,24 @@
+{
+  "root_cause": "v3.1.0 changed the readiness probe path to /health, but the route was never added to the service, so every pod fails readiness and gets recycled.",
+  "evidence": [
+    "log: 'readiness probe failed: HTTP probe returned status 500' immediately after rollout",
+    "log: 'pod entered CrashLoopBackOff' shortly after",
+    "metric:pod_restart_count climbs from 0 to double digits within 15 minutes",
+    "deploy: v3.1.0 probe path change 3 minutes before window start is the exact trigger"
+  ],
+  "recommended_remediation": "Roll back the probe path change (or add the missing /health route) and redeploy.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Redeploying a production service is explicitly high-risk.",
+  "incident_id": "INC-012",
+  "title": "k8s crashloop bad readiness probe",
+  "category": "k8s_crashloop",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "19"
+  ]
+}

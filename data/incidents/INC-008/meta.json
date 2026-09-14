@@ -1,0 +1,13 @@
+{
+  "incident_id": "INC-008",
+  "alert_name": "Alert: anomalous behavior detected \u2014 payment-service",
+  "services": [
+    "payment-service"
+  ],
+  "window_start": "2026-03-01T00:00:00+00:00",
+  "window_end": "2026-03-01T01:00:00+00:00",
+  "available_metrics": [
+    "error_rate_pct"
+  ],
+  "note": "This metadata is intentionally non-spoiler: it names the services and window but not the cause."
+}

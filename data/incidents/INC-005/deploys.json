@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:45:00+00:00",
+    "service": "marketing-site",
+    "version": "1.4.2",
+    "description": "marketing-site: unrelated homepage banner update"
+  }
+]

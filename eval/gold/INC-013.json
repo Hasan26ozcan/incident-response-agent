@@ -1,0 +1,24 @@
+{
+  "root_cause": "The metrics-server upgrade broke the custom-metrics API path the HPA depends on; CPU climbs under real load but the HPA silently fails to evaluate, so replica_count never increases.",
+  "evidence": [
+    "metric:cpu_percent ramps to 95% from minute 20, sustained",
+    "metric:replica_count stays flat at 4 throughout \u2014 the key anomaly is an ABSENCE of the expected scale-up",
+    "log: 'autoscaler evaluation error: metrics API unavailable' correlating with the metrics-server upgrade window",
+    "deploy: metrics-server v0.7.2 upgrade 40 minutes before window start"
+  ],
+  "recommended_remediation": "Roll back metrics-server to the prior version to restore HPA evaluation; manually scale replicas in the interim.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Manual scaling and a platform-component rollback are both high-risk, cluster-wide-impact actions.",
+  "incident_id": "INC-013",
+  "title": "autoscaling hpa not triggering",
+  "category": "autoscaling_failure",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "The 'flat replica_count' signal is easy to overlook if an agent only checks whether CPU is high, rather than checking whether the expected corrective action occurred.",
+  "primary_stage_use": [
+    "6",
+    "9",
+    "19"
+  ]
+}

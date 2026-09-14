@@ -1,0 +1,23 @@
+{
+  "root_cause": "The ingress TLS certificate for checkout-api expired; automatic renewal failed silently two weeks prior.",
+  "evidence": [
+    "log: 'TLS handshake failed: certificate has expired' from essentially all clients starting minute 5",
+    "metric:error_rate_pct jumps almost immediately (within 1 minute) to ~95% \u2014 a signature of a hard cutover, not a gradual degradation",
+    "no deploys in window \u2014 this is an operational/certificate lifecycle issue, not a code change"
+  ],
+  "recommended_remediation": "Issue and deploy a new certificate immediately; fix the renewal automation and add expiry alerting at 14/7/1 days out.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rotating a production ingress certificate is high-risk (customer-facing, affects all traffic).",
+  "incident_id": "INC-010",
+  "title": "tls cert expiry checkout ingress",
+  "category": "tls_cert_expiry",
+  "difficulty": "easy",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "19"
+  ]
+}

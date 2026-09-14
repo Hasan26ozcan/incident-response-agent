@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:30:00+00:00",
+    "service": "checkout-api",
+    "version": "2.1.0",
+    "description": "Added in-memory response cache for cart lookups"
+  }
+]

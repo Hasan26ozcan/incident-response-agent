@@ -1,0 +1,26 @@
+{
+  "root_cause": "The new in-memory response cache added in v2.1.0 has no eviction policy, causing unbounded heap growth that culminates in OOMKilled restarts.",
+  "evidence": [
+    "metric:memory_percent climbs steadily from minute 20, reaching 98% by minute ~110",
+    "metric:gc_pause_ms spikes from minute 70 as GC struggles to reclaim heap",
+    "log: 'container OOMKilled by kubelet' entries beginning near minute 110",
+    "deploy: v2.1.0 (30 minutes before baseline start) introduced the unbounded cache"
+  ],
+  "recommended_remediation": "Roll back to v2.0.x, add a bounded/TTL eviction policy to the cache before re-deploying.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback of a deploy is explicitly listed as a high-risk action.",
+  "incident_id": "INC-002",
+  "title": "memory leak oom checkout",
+  "category": "memory_leak",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "9",
+    "12",
+    "19"
+  ]
+}

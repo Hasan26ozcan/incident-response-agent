@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:55:00+00:00",
+    "service": "notifications-service",
+    "version": "1.8.0",
+    "description": "notifications-service: added synchronous audit-log write per message"
+  }
+]
