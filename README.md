@@ -12,7 +12,14 @@ stages are cut short.
 
 ## Status
 
-🚧 **Stage 0 — Spec & Architecture** (this commit)
+✅ **Stage 1 — Synthetic Incident Dataset** (complete)
+
+- 20 synthetic incident scenarios across 19 categories
+- Gold answers, rubric, and validation tooling complete
+- **187 tests passing** — dataset generation, validation, integrity, leakage prevention, false-alarm handling, recurrence pairs, and distractor-pair invariants
+- Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
+
+🚧 **Stage 2 — Repo Skeleton & CI Baseline** (next)
 
 See [`ROADMAP.md`](./ROADMAP.md) for the full 23-stage plan across 8 phases,
 and [`openspec/`](./openspec) for the formal spec, proposal, and design
@@ -32,8 +39,31 @@ over BMAD-METHOD and GitHub Spec Kit.
 incident-response-agent/
 ├── README.md
 ├── ROADMAP.md
+├── CHANGELOG.md
 ├── LICENSE
 ├── .gitignore
+├── requirements.txt              # torch, numpy
+├── .venv/                        # Python environment (PyTorch 2.14.0+cpu)
+├── tests/                        # Test suite — 187 tests
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_torch_env.py         # torch/numpy environment verification
+│   └── test_dataset.py           # dataset integrity, validation, invariants
+├── data/
+│   ├── generate_dataset.py       # Deterministic dataset generator
+│   └── incidents/                # 20 incident scenarios (INC-001…INC-020)
+│       └── <id>/
+│           ├── meta.json
+│           ├── logs.log
+│           ├── metrics.json
+│           └── deploys.json
+├── eval/
+│   ├── validate_dataset.py       # Mechanical integrity/leakage validator
+│   ├── generate_gold_set_md.py   # Regenerates gold_set.md
+│   ├── rubric.md                 # Scoring rubric with hard gates
+│   ├── gold_set.md               # Human-readable summary table
+│   └── gold/                     # 20 gold answers (kept separate from data/)
+│       └── INC-0NN.json
 └── openspec/
     ├── README.md
     ├── proposal.md                          # Stage 0 proposal (scope, architecture)
@@ -42,15 +72,39 @@ incident-response-agent/
     └── comparison-bmad-speckit-openspec.md  # BMAD vs Spec Kit vs OpenSpec
 ```
 
-Future stages will add `src/`, `tests/`, `agents/`, `mcp_servers/`, etc. —
-those are intentionally not created yet, per the OpenSpec proposal, so that
-Stage 2 (repo skeleton & CI) can lay them down against a green CI baseline
-rather than retrofitting structure onto ad-hoc code.
+Stage 2 will add `src/`, `agents/`, `mcp_servers/`, and CI configuration
+on top of this foundation.
 
-## Getting started (once Stage 2 lands)
+## Getting started
 
-Nothing to run yet — Stage 0 is spec-only. Stage 2 will add dependency
-management, CI (ruff / bandit / mypy), and a sandboxed execution environment.
+### Prerequisites
+- Python 3.11+
+- pip
+
+### Setup
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate          # Windows
+# source .venv/bin/activate       # macOS/Linux
+pip install -r requirements.txt
+```
+
+### Regenerate the dataset
+```bash
+python data/generate_dataset.py   # Generate all 20 incidents + gold answers
+python eval/validate_dataset.py   # Validate integrity (no leakage, correct counts)
+python eval/generate_gold_set_md.py  # Regenerate gold_set.md
+```
+
+### Run tests
+```bash
+python -m pytest tests/ -v        # 187 tests — all should pass
+```
+
+### Verify the torch environment
+```bash
+python -m pytest tests/test_torch_env.py -v
+```
 
 ## License
 
