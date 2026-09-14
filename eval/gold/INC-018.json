@@ -1,0 +1,24 @@
+{
+  "root_cause": "v1.6.0's related-items suggestion feature uses ORM lazy-loading, issuing one query per cart item instead of a single batched query \u2014 an N+1 pattern that saturates db CPU under moderate load.",
+  "evidence": [
+    "log: 'query pattern detected: ... SELECT statements issued for one request'",
+    "log: 'ORM lazy-loading triggering repeated per-row queries'",
+    "metric:db_cpu_pct climbs to 94% while metric:latency_p99_ms lags slightly behind it (query volume drives CPU, which then drives latency)",
+    "deploy: v1.6.0 related-items feature 10 minutes before window start"
+  ],
+  "recommended_remediation": "Roll back the related-items feature or patch it to eager-load/batch the query; add a query-count-per-request guard to catch future N+1 regressions.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback/code fix requiring redeploy is high-risk.",
+  "incident_id": "INC-018",
+  "title": "n plus one query cart service",
+  "category": "n_plus_one_query",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "Superficially resembles INC-005's DB-pool-exhaustion symptom profile (both show DB slowness affecting an API service). Distinguishing signal is db_cpu_pct saturating (compute-bound) here versus db_pool_waiting saturating (connection-bound) in INC-005. Designed as a debate-mechanism (Stage 8) test pair with INC-005.",
+  "primary_stage_use": [
+    "6",
+    "8",
+    "19"
+  ]
+}

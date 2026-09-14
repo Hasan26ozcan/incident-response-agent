@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:52:00+00:00",
+    "service": "platform-dns",
+    "version": "n/a",
+    "description": "platform: internal DNS CoreDNS config map updated (cache TTL change)"
+  }
+]

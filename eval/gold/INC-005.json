@@ -1,0 +1,24 @@
+{
+  "root_cause": "A traffic surge from a flash-sale campaign exhausts orders-db's connection pool (max 50), causing checkout-api requests to queue and time out.",
+  "evidence": [
+    "metric:db_pool_active saturates at the configured max (50) from minute ~45",
+    "metric:db_pool_waiting climbs sharply from minute 38",
+    "log: 'db connection pool exhausted: active=50 idle=0 waiting=...' from checkout-api",
+    "deploy: the only recent deploy (marketing-site banner) is unrelated and should NOT be blamed \u2014 a common false-correlation trap"
+  ],
+  "recommended_remediation": "Temporarily raise the connection pool max and add read-replica routing for read-heavy queries; longer term, add pool-saturation alerting ahead of known campaigns.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "A pool-size config bump via existing config management, without a full service redeploy, is treated as medium risk here \u2014 but escalate to high if it requires a restart.",
+  "incident_id": "INC-005",
+  "title": "db pool exhaustion checkout",
+  "category": "db_pool_exhaustion",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "The marketing-site deploy is a same-timeframe red herring; correct diagnosis must not attribute the incident to it.",
+  "primary_stage_use": [
+    "6",
+    "8",
+    "19"
+  ]
+}

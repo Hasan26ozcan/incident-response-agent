@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:50:00+00:00",
+    "service": "cart-service",
+    "version": "1.6.0",
+    "description": "cart-service: added related-items suggestions to cart view via ORM relationship"
+  }
+]

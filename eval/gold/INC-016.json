@@ -1,0 +1,23 @@
+{
+  "root_cause": "The updated load-balancer health-check path doesn't match node-3's actual health endpoint, so the LB routes traffic to node-3 despite it being unable to serve those requests correctly.",
+  "evidence": [
+    "log: 'uneven traffic distribution: node-3 receiving 80% of requests'",
+    "log: 'health check misconfigured, routing to unhealthy node'",
+    "log: '502 Bad Gateway rate increased on node-3' specifically (not the other nodes)",
+    "deploy: LB health-check path update 12 minutes before window start"
+  ],
+  "recommended_remediation": "Revert the health-check path to the previous value, or fix node-3's endpoint to match; verify traffic rebalances evenly.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "Load-balancer config revert is a persistent infra change but doesn't touch application code or require an app redeploy \u2014 medium.",
+  "incident_id": "INC-016",
+  "title": "lb misconfig uneven traffic node3",
+  "category": "lb_misconfig",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "19"
+  ]
+}

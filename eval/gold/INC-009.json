@@ -1,0 +1,22 @@
+{
+  "root_cause": "A CoreDNS config map change dropped the internal search-domain entry, so lookups for internal-service.svc.cluster.local fail intermittently.",
+  "evidence": [
+    "log: 'DNS resolution failed for internal-service.svc.cluster.local' repeated from checkout-api",
+    "log: 'getaddrinfo ENOTFOUND' errors matching the same hostname",
+    "deploy: CoreDNS config map change 8 minutes before window start correlates with onset"
+  ],
+  "recommended_remediation": "Revert the CoreDNS config map change; validate internal service discovery recovers across all namespaces, not just checkout-api.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Cluster-wide DNS config change is high-risk (affects many services beyond the one showing symptoms).",
+  "incident_id": "INC-009",
+  "title": "dns resolution failure internal svc",
+  "category": "dns_misconfig",
+  "difficulty": "medium",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "6",
+    "19"
+  ]
+}

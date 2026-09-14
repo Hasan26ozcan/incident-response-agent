@@ -1,0 +1,25 @@
+{
+  "root_cause": "A top-of-rack switch fault on the node hosting inventory-service causes elevated packet loss between checkout-api and inventory-service.",
+  "evidence": [
+    "metric:tcp_retransmit_rate jumps from 0.2% to 14% at minute 30, sharply, not gradually",
+    "metric:latency_p99_ms spikes in lockstep",
+    "log: 'packet loss detected ...% on eth0' and 'connection reset by peer' from both services simultaneously",
+    "no deploys in the window \u2014 ruling out a code-change root cause"
+  ],
+  "recommended_remediation": "Cordon and drain the affected node; file an infrastructure ticket with the platform team for the switch fault.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Cordoning/draining a production node is an infrastructure-level high-risk action.",
+  "incident_id": "INC-007",
+  "title": "network partition eth0 packet loss",
+  "category": "network_partition",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "Symptom profile (latency + resets) is easy to mis-attribute to an application-level GC issue (compare INC-017); correct diagnosis requires reading the retransmit-rate metric, not just latency.",
+  "primary_stage_use": [
+    "6",
+    "8",
+    "9",
+    "19"
+  ]
+}

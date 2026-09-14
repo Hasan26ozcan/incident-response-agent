@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:48:00+00:00",
+    "service": "platform-load-balancer",
+    "version": "n/a",
+    "description": "platform: load balancer health-check path updated for checkout-api node pool"
+  }
+]

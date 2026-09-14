@@ -1,0 +1,24 @@
+{
+  "root_cause": "v5.2.0 quadrupled the in-memory order cache size without increasing heap allocation, pushing the JVM into frequent stop-the-world full GC cycles that manifest as request latency spikes.",
+  "evidence": [
+    "metric:gc_pause_ms spikes first, one minute before latency_p99_ms \u2014 the ordering matters for correct attribution",
+    "log: 'JVM GC pause STW duration ...ms' and 'full GC triggered ... times in 10 minutes'",
+    "deploy: v5.2.0 cache-size increase 4 minutes before window start"
+  ],
+  "recommended_remediation": "Roll back the cache size increase, or increase JVM heap allocation to match; add GC-pause alerting.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rollback/config change requiring redeploy is high-risk.",
+  "incident_id": "INC-017",
+  "title": "gc pause storm order service",
+  "category": "gc_pause_storm",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "Superficially resembles INC-007's network-partition symptom profile (latency spikes + connection resets, since GC pauses also cause transient connection resets). Distinguishing signal is gc_pause_ms leading latency_p99_ms by ~1 minute, versus INC-007's simultaneous spike in tcp_retransmit_rate. Designed as a debate-mechanism (Stage 8) test pair with INC-007.",
+  "primary_stage_use": [
+    "6",
+    "8",
+    "9",
+    "19"
+  ]
+}

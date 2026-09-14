@@ -1,0 +1,23 @@
+{
+  "root_cause": "A misconfigured debug-log verbosity setting left on since the last incident causes notifications-service to fill its /var/log partition.",
+  "evidence": [
+    "metric:disk_used_pct climbs steadily from minute 100, saturating at 100% by minute ~160",
+    "log: '/var/log partition at ...% capacity' warnings escalating in frequency",
+    "log: 'write failed: No space left on device' errors once disk hits 100%"
+  ],
+  "recommended_remediation": "Rotate/purge old logs to free space immediately; revert debug verbosity to normal and add disk-usage alerting at 80%.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Executing a cleanup/remediation script on a production host is high-risk per the taxonomy, even though the individual commands seem low-stakes.",
+  "incident_id": "INC-006",
+  "title": "disk full log partition",
+  "category": "disk_full",
+  "difficulty": "easy",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "3",
+    "6",
+    "19"
+  ]
+}

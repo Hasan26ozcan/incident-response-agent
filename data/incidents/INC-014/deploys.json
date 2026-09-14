@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:54:00+00:00",
+    "service": "auth-service",
+    "version": "n/a",
+    "description": "platform: auth-service client secret rotated via vault"
+  }
+]

@@ -1,0 +1,228 @@
+[
+  {
+    "incident_id": "INC-001",
+    "slug": "cpu-runaway-retry-loop",
+    "category": "cpu_exhaustion",
+    "difficulty": "easy",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-002",
+    "slug": "memory-leak-oom-checkout",
+    "category": "memory_leak",
+    "difficulty": "medium",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-003",
+    "slug": "cascading-payment-timeout",
+    "category": "cascading_failure",
+    "difficulty": "hard",
+    "services": [
+      "checkout-api",
+      "payment-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-004",
+    "slug": "bad-deploy-order-validator-npe",
+    "category": "bad_deploy",
+    "difficulty": "easy",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-005",
+    "slug": "db-pool-exhaustion-checkout",
+    "category": "db_pool_exhaustion",
+    "difficulty": "medium",
+    "services": [
+      "checkout-api",
+      "orders-db"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-006",
+    "slug": "disk-full-log-partition",
+    "category": "disk_full",
+    "difficulty": "easy",
+    "services": [
+      "notifications-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-007",
+    "slug": "network-partition-eth0-packet-loss",
+    "category": "network_partition",
+    "difficulty": "hard",
+    "services": [
+      "checkout-api",
+      "inventory-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-008",
+    "slug": "third-party-payment-gateway-outage",
+    "category": "third_party_outage",
+    "difficulty": "medium",
+    "services": [
+      "payment-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-009",
+    "slug": "dns-resolution-failure-internal-svc",
+    "category": "dns_misconfig",
+    "difficulty": "medium",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-010",
+    "slug": "tls-cert-expiry-checkout-ingress",
+    "category": "tls_cert_expiry",
+    "difficulty": "easy",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-011",
+    "slug": "mq-consumer-lag-notifications",
+    "category": "mq_backlog",
+    "difficulty": "medium",
+    "services": [
+      "notifications-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-012",
+    "slug": "k8s-crashloop-bad-readiness-probe",
+    "category": "k8s_crashloop",
+    "difficulty": "medium",
+    "services": [
+      "inventory-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-013",
+    "slug": "autoscaling-hpa-not-triggering",
+    "category": "autoscaling_failure",
+    "difficulty": "hard",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-014",
+    "slug": "secret-rotation-auth-failures",
+    "category": "secret_rotation_failure",
+    "difficulty": "medium",
+    "services": [
+      "checkout-api",
+      "auth-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-015",
+    "slug": "config-drift-max-retries-prod",
+    "category": "config_drift",
+    "difficulty": "hard",
+    "services": [
+      "checkout-api",
+      "payment-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-016",
+    "slug": "lb-misconfig-uneven-traffic-node3",
+    "category": "lb_misconfig",
+    "difficulty": "medium",
+    "services": [
+      "checkout-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-017",
+    "slug": "gc-pause-storm-order-service",
+    "category": "gc_pause_storm",
+    "difficulty": "hard",
+    "services": [
+      "orders-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-018",
+    "slug": "n-plus-one-query-cart-service",
+    "category": "n_plus_one_query",
+    "difficulty": "medium",
+    "services": [
+      "cart-service",
+      "orders-db"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-019",
+    "slug": "false-alarm-noisy-cpu-threshold",
+    "category": "false_alarm",
+    "difficulty": "easy",
+    "services": [
+      "search-service"
+    ],
+    "is_false_alarm": true,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-020",
+    "slug": "memory-leak-oom-notifications-recurrence",
+    "category": "memory_leak",
+    "difficulty": "medium",
+    "services": [
+      "notifications-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": "INC-002"
+  }
+]
