@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "incident-response-agent"
 version = "0.1.0"
@@ -7,6 +11,21 @@ dependencies = [
     "torch>=2.0",
     "numpy>=1.24",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "bandit>=1.9",
+    "mypy>=2.3",
+    "pytest>=9",
+    "pytest-cov>=7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/incident_agent"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/incident_agent"]
 
 [tool.ruff]
 exclude = [".venv", ".pytest_cache", "__pycache__", "data/generated", "eval/results"]
@@ -19,6 +38,9 @@ ignore = [
     "C408",  # dict() calls are intentional for keyword-arg readability in scenario definitions
     "UP017",  # timezone.utc is more readable than datetime.UTC
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"data/generate_dataset.py" = ["E501", "C408"]
 
 [tool.mypy]
 python_version = "3.11"

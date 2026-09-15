@@ -27,6 +27,6 @@ services:
       - .:/app
     environment:
       - PYTHONUNBUFFERED=1
-    command: sh -c "ruff check data/ eval/ tests/ --exclude .venv && mypy data/ eval/ tests/ --ignore-missing-imports && bandit -r data/ eval/ tests/ --configfile bandit.yml"
+    command: sh -c "ruff check . && ruff format --check . && mypy . --ignore-missing-imports && bandit -c bandit.yml -r src && pytest --cov=incident_agent --cov-report=term-missing && python3 eval/validate_dataset.py"
     stdin_open: true
     tty: true

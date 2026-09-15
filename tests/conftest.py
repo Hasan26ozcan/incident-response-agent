@@ -1,4 +1,5 @@
 """Shared test fixtures and configuration for the incident-response-agent test suite."""
+
 import sys
 from pathlib import Path
 
