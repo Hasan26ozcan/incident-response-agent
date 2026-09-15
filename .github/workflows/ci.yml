@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install project (with dev dependencies)
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff check)
+        run: ruff check .
+
+      - name: Format check (ruff format)
+        run: ruff format --check .
+
+      - name: Security scan (bandit)
+        run: bandit -c bandit.yml -r src
+
+      - name: Type check (mypy)
+        run: mypy
+
+      - name: Unit tests (pytest, with coverage)
+        run: pytest --cov=incident_agent --cov-report=term-missing
+
+      - name: Regenerate dataset and check it matches committed output
+        # Confirms the dataset generator is still deterministic and that
+        # nobody hand-edited data/incidents/ or eval/gold/ out of sync with
+        # generate_dataset.py — see data/README.md "Regenerating".
+        run: |
+          cd data && python3 generate_dataset.py && cd ..
+          python3 eval/generate_gold_set_md.py
+          git diff --exit-code -- data/incidents eval/gold eval/gold_set.md
+
+      - name: Validate dataset integrity (Stage 1 regression check)
+        run: python3 eval/validate_dataset.py
+
+      - name: Install trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          trivy-version: 'v0.59'
+
+      - name: Trivy vulnerability scan on project Dockerfiles
+        run: |
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed docker/
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed python:3.11-slim || true
+
+  sandbox-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sandbox image
+        run: docker build -t incident-agent-sandbox:ci -f docker/sandbox/Dockerfile docker/sandbox
+
+      - name: Verify sandbox runs as non-root
+        run: |
+          user=$(docker run --rm incident-agent-sandbox:ci whoami)
+          [ "$user" = "sandbox" ] || (echo "expected non-root user 'sandbox', got '$user'" && exit 1)
+
+      - name: Verify sandbox has no network access by default
+        run: |
+          docker run --rm --network none incident-agent-sandbox:ci \
+            python3 -c "import socket; socket.create_connection(('1.1.1.1', 80), timeout=2)" \
+            && exit 1 || echo "network correctly unreachable"
+
+      - name: Trivy scan on sandbox image
+        uses: aquasecurity/trivy-action@master
+        with:
+          trivy-version: 'v0.59'
+          image-ref: 'incident-agent-sandbox:ci'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true

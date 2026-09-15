@@ -10,7 +10,10 @@ venv/
 node_modules/
 
 # Docker / sandbox artifacts
+# NOTE: data/incidents/*/logs.log are committed dataset files — keep them.
+# Only ignore generated/ephemeral log files outside the dataset tree.
 *.log
+!data/incidents/*/logs.log
 
 # Editors / OS
 .vscode/
@@ -20,3 +23,7 @@ node_modules/
 # Eval / data artifacts (added when Stage 1+ lands)
 data/generated/
 eval/results/
+
+# Coverage
+.coverage
+htmlcov/

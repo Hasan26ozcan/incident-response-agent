@@ -8,6 +8,7 @@ human-readable table never drifts from the machine-readable gold answers.
 Usage:
     python3 eval/generate_gold_set_md.py
 """
+
 import json
 from pathlib import Path
 

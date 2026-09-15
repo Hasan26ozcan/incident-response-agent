@@ -10,7 +10,7 @@ def test_torch_available():
     # Verify basic tensor ops work
     t = torch.tensor([1.0, 2.0, 3.0])
     assert t.sum().item() == 6.0, "Basic torch tensor ops failed"
-    assert torch.cuda.is_available() or True, "CPU torch is acceptable"
+    # CPU torch is acceptable; CUDA availability is not required for tests
 
 
 def test_numpy_available():
