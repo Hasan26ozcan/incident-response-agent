@@ -16,10 +16,10 @@ stages are cut short.
 
 - 20 synthetic incident scenarios across 19 categories
 - Gold answers, rubric, and validation tooling complete
-- **187 tests passing** — dataset generation, validation, integrity, leakage prevention, false-alarm handling, recurrence pairs, and distractor-pair invariants
+- **192 tests passing** — dataset generation, validation, integrity, leakage prevention, false-alarm handling, recurrence pairs, and distractor-pair invariants
 - Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
 
-🚧 **Stage 2 — Repo Skeleton & CI Baseline** (next)
+✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
 
 See [`ROADMAP.md`](./ROADMAP.md) for the full 23-stage plan across 8 phases,
 and [`openspec/`](./openspec) for the formal spec, proposal, and design
@@ -44,7 +44,7 @@ incident-response-agent/
 ├── .gitignore
 ├── requirements.txt              # torch, numpy
 ├── .venv/                        # Python environment (PyTorch 2.14.0+cpu)
-├── tests/                        # Test suite — 187 tests
+├── tests/                        # Test suite — 192 tests
 │   ├── __init__.py
 │   ├── conftest.py
 │   ├── test_torch_env.py         # torch/numpy environment verification
@@ -72,7 +72,7 @@ incident-response-agent/
     └── comparison-bmad-speckit-openspec.md  # BMAD vs Spec Kit vs OpenSpec
 ```
 
-Stage 2 will add `src/`, `agents/`, `mcp_servers/`, and CI configuration
+Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configuration
 on top of this foundation.
 
 ## Getting started
@@ -98,7 +98,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # 187 tests — all should pass
+python -m pytest tests/ -v        # 192 tests — all should pass
 ```
 
 ### Verify the torch environment
