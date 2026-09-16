@@ -1,11 +1,7 @@
 # Proposal: Stage 0 — Spec & Architecture
 
 - **Status:** Approved
-<<<<<<< HEAD
 - **Stage:** 0 of 23
-=======
-- **Stage:** 0 / 22
->>>>>>> 60eb90cfe3ed360fa4b33aae3322fe3b15f103ef
 - **Phase:** A — Foundations & Spec
 
 ## 1. Problem / Motivation

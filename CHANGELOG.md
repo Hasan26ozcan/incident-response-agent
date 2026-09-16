@@ -27,12 +27,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
-## [Unreleased]
-
+## [Stage 2] — 2026-09-15
 ### Added
-- Project skeleton: README, ROADMAP, LICENSE, .gitignore
-- OpenSpec spec suite: proposal, agent responsibility matrix, risk classification, methodology comparison
-- 23-stage roadmap across 8 phases (Phase A–H)
+- Project skeleton: `src/incident_agent/` package with subpackages (`agents/`, `tools/`, `memory/`, `workflows/`, `eval/`)
+- `pyproject.toml` with hatchling build, ruff/bandit/mypy config
+- CI pipeline (`.github/workflows/ci.yml`): ruff, bandit, mypy, pytest, trivy, dataset regeneration check
+- `Makefile` with 10 targets (`make ci`, `make sandbox-build`, `make sandbox-shell`, etc.)
+- `.pre-commit-config.yaml` (ruff, pre-commit hooks)
+- Docker configuration: `Dockerfile`, `docker-compose.yml`, `docker/sandbox/Dockerfile` (hardened non-root image)
+- `docker/sandbox/README.md` — sandbox invocation patterns and rationale
+- `src/incident_agent/cli.py` — console script entry point placeholder
+- `src/incident_agent/py.typed` — marker file for type-aware imports
+- 5 Stage-2 smoke tests (`tests/test_smoke.py`) — package install, CLI, subpackage imports
+- **192 tests total, all passing**
+### Changed
+- `.gitignore` — added data/generated/, eval/results/ paths
+- README.md — updated Stage 2 status, corrected test count to 192
+### Verified
+- All 192 tests pass
+- ruff check, ruff format, mypy, bandit — all green
+- Docker image builds and runs as non-root user
+- Sandbox has no network access by default
 
 ## [Stage 0] — 2026-09-13
 ### Added

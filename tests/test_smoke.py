@@ -51,5 +51,5 @@ def test_all_subpackages_import() -> None:
     """Every Stage-3+ subpackage should at least import cleanly, even empty."""
     import importlib
 
-    for subpackage in ["agents", "tools", "memory", "workflows", "eval"]:
+    for subpackage in ["agents", "tools", "memory", "workflows", "eval", "mcp_servers"]:
         importlib.import_module(f"incident_agent.{subpackage}")
