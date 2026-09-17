@@ -1,10 +1,8 @@
 """Command-line entry point.
 
-At Stage 2 this only proves the packaging (`incident-agent` console script)
-and CI wiring work end to end. Stage 3 replaces the body of `main()` with
-the single-agent ReAct loop described in ROADMAP.md Phase B, pointed at the
-synthetic incidents under data/incidents/ (see data/README.md for the
-schema and eval/rubric.md for how its output will be scored).
+At Stage 3 this implements the `diagnose` subcommand that runs
+the single-agent ReAct loop against a synthetic incident.
+See ROADMAP.md Phase B for the single-agent ReAct skeleton spec.
 """
 
 from __future__ import annotations
@@ -12,17 +10,37 @@ from __future__ import annotations
 import sys
 
 from incident_agent import __version__
+from incident_agent.agents.react_agent import ReActAgent
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the `incident-agent` console script.
+    """Entry point for the `incident-agent` console script."""
+    args = argv if argv is not None else sys.argv[1:]
 
-    Currently a placeholder that prints its version and exits 0, so CI has
-    something real to install and invoke. Returns a process exit code
-    rather than calling sys.exit() directly, so it stays testable.
-    """
-    del argv  # unused until Stage 3 adds real argument parsing
-    print(f"incident-agent v{__version__} — skeleton only. The ReAct diagnosis loop lands in Stage 3 (see ROADMAP.md).")
+    if not args:
+        print(f"incident-agent v{__version__} — use 'diagnose <INC-ID>'")
+        return 0
+
+    command = args[0]
+
+    if command == "diagnose":
+        return _cmd_diagnose(args[1:])
+
+    print(f"Unknown command: {command}")
+    return 1
+
+
+def _cmd_diagnose(args: list[str]) -> int:
+    """Run the ReAct agent against a single incident."""
+    if not args:
+        print("Usage: incident-agent diagnose <INC-ID>")
+        print("Example: incident-agent diagnose INC-001")
+        return 1
+
+    incident_id = args[0]
+    agent = ReActAgent(confidence_threshold=0.7)
+    diagnosis = agent.run(incident_id)
+    print(diagnosis.format_report())
     return 0
 
 
