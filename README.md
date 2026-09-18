@@ -16,7 +16,7 @@ stages are cut short.
 
 - 20 synthetic incident scenarios across 19 categories
 - Gold answers, rubric, and validation tooling complete
-- **192 tests passing** — dataset generation, validation, integrity, leakage prevention, false-alarm handling, recurrence pairs, and distractor-pair invariants
+- **269 tests passing** across all stages — dataset generation, validation, integrity, leakage prevention, false-alarm handling, schema validation, prompt library, and more
 - Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
 
 ✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
@@ -24,6 +24,22 @@ stages are cut short.
 See [`ROADMAP.md`](./ROADMAP.md) for the full 23-stage plan across 8 phases,
 and [`openspec/`](./openspec) for the formal spec, proposal, and design
 decisions behind this stage.
+
+✅ **Stage 3 — Single-Agent ReAct Loop** (complete)
+
+- ReActAgent with observe/reason/act/repeat loop
+- Tool functions for logs, metrics, deploys, metadata
+- CLI `diagnose` subcommand
+- **220 tests passing**
+
+✅ **Stage 4 — Structured Output & Prompt Engineering** (complete)
+
+- All agent outputs validated via Pydantic schemas (`Diagnosis`, `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`)
+- JSON-mode compatible serialization (`to_json()` / `from_json()`)
+- Prompt library with system prompt template, three few-shot examples, and `build_prompt()` utility
+- Cross-cutting rule enforced: every agent output is a validated Pydantic object
+- **82 tests passing** (49 Stage 4 + 28 Stage 3 + 5 smoke)
+- See [`openspec/changes/004-structured-output-prompt-engineering/proposal.md`](./openspec/changes/004-structured-output-prompt-engineering/proposal.md) for the proposal
 
 ## Why OpenSpec
 
@@ -44,7 +60,7 @@ incident-response-agent/
 ├── .gitignore
 ├── requirements.txt              # torch, numpy
 ├── .venv/                        # Python environment (PyTorch 2.14.0+cpu)
-├── tests/                        # Test suite — 192 tests
+├── tests/                        # Test suite
 │   ├── __init__.py
 │   ├── conftest.py
 │   ├── test_torch_env.py         # torch/numpy environment verification
@@ -73,7 +89,8 @@ incident-response-agent/
 ```
 
 Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configuration
-on top of this foundation.
+on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `prompts/`
+(prompt library with few-shot examples).
 
 ## Getting started
 
@@ -98,7 +115,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # 192 tests — all should pass
+python -m pytest tests/ -v        # 269 tests — all should pass
 ```
 
 ### Verify the torch environment
