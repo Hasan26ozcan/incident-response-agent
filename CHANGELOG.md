@@ -27,6 +27,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 4] — 2026-09-18
+### Added
+- `src/incident_agent/schemas/` package with Pydantic models:
+  - `Diagnosis` — replaces `dataclasses.Diagnosis` with full schema validation
+  - `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`
+- `src/incident_agent/prompts/` package with prompt library:
+  - `system_prompt.py` — system prompt template with role, constraints, and output schema
+  - `few_shot.py` — three curated few-shot examples covering diverse categories and risk tiers
+  - `builder.py` — `build_prompt()` utility to assemble complete prompts
+- `ReActAgent` updated to produce Pydantic-validated `Diagnosis` objects
+- Cross-cutting rule enforced: every agent output is a validated Pydantic object
+- `tests/test_stage4.py` — 49 schema validation and prompt library tests
+- OpenSpec proposal `openspec/changes/004-structured-output-prompt-engineering/proposal.md`
+- Pydantic added to `pyproject.toml` and `requirements.txt`
+### Changed
+- `src/incident_agent/agents/react_agent.py` — now produces Pydantic `Diagnosis` instead of `dataclasses.Diagnosis`
+- `src/incident_agent/__init__.py` — exports all Pydantic schema types
+- `src/incident_agent/agents/__init__.py` — exports Pydantic `Diagnosis`
+- `src/incident_agent/schemas/__init__.py` — new canonical schema exports
+### Verified
+- All 82 tests pass (49 Stage 4 + 28 Stage 3 + 5 smoke)
+- Schema validation catches invalid inputs (missing fields, out-of-bounds confidence, empty evidence)
+- JSON round-trip (`to_json` → `from_json`) produces valid Diagnosis objects
+- Prompt builder produces valid structured prompts with few-shot examples
+- Backward compatible: existing `format_report()` and CLI work unchanged
+
+## [Stage 3] — 2026-09-16
+### Added
+- `src/incident_agent/agents/react_agent.py` — ReActAgent with observe/reason/act/repeat loop
+- `src/incident_agent/tools/` — tool functions: read_meta, read_logs, find_error_logs, detect_anomaly_timestamps, get_recent_deploys, find_metric_spikes, read_metrics, read_deploys
+- `src/incident_agent/cli.py` — diagnose subcommand
+- `Diagnosis` dataclass with structured output and format_report()
+- 28 comprehensive Stage 3 tests
+### Changed
+- README.md — updated Stage 3 status
+### Verified
+- All 220 tests passing
+- ruff, mypy, bandit clean
+
 ## [Stage 2] — 2026-09-15
 ### Added
 - Project skeleton: `src/incident_agent/` package with subpackages (`agents/`, `tools/`, `memory/`, `workflows/`, `eval/`)
