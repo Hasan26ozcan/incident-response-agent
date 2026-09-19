@@ -32,6 +32,14 @@ decisions behind this stage.
 - CLI `diagnose` subcommand
 - **220 tests passing**
 
+✅ **Stage 5 — Dynamic Planning & Error Recovery** (complete)
+
+- Plan-based execution with ordered diagnostic steps
+- Replanning loop rebuilds the plan when a step fails
+- `Plan`, `PlanStep`, `StepFailure` data structures
+- `generate_plan()` supports standard, log_only, metrics_only strategies
+- **304 tests passing** (35 Stage 5 + 269 existing)
+
 ✅ **Stage 4 — Structured Output & Prompt Engineering** (complete)
 
 - All agent outputs validated via Pydantic schemas (`Diagnosis`, `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`)
@@ -90,7 +98,8 @@ incident-response-agent/
 
 Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configuration
 on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `prompts/`
-(prompt library with few-shot examples).
+(prompt library with few-shot examples). Stage 5 added `workflows/plan.py` (Plan,
+PlanStep, StepFailure) and updated `ReActAgent` with plan-based execution and replanning.
 
 ## Getting started
 

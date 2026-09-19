@@ -34,7 +34,7 @@ Agent outputs strictly validated via Pydantic schemas + JSON mode/grammars.
 Few-shot examples and disciplined system-prompt templating established.
 *Output:* schema validation test suite, prompt library.
 
-**Stage 5 — Dynamic Planning & Error Recovery**
+**Stage 5 — Dynamic Planning & Error Recovery** ✅
 Replanning loop when a step fails (rebuild the plan from feedback).
 *Output:* test showing recovery from a deliberately injected failure.
 

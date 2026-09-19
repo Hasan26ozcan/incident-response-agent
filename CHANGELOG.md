@@ -27,6 +27,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 5] — 2026-09-19
+### Added
+- `src/incident_agent/workflows/plan.py` — Plan, PlanStep, PlanStepType, StepFailure, generate_plan()
+  - `Plan` dataclass with ordered `PlanStep` sequence, replan_count tracking
+  - `PlanStep` frozen dataclass with step_type, description, order
+  - `StepFailure` exception carrying the failed step and reason
+  - `generate_plan(incident_id, strategy)` supporting "standard", "log_only", "metrics_only"
+- `src/incident_agent/agents/react_agent.py` — Dynamic planning and error recovery (Stage 5)
+  - `ReActAgent.generate_plan()` — produces a diagnostic plan before execution
+  - `ReActAgent.execute_plan()` — runs all plan steps, raising StepFailure on invalid results
+  - `ReActAgent.replan()` — rebuilds the plan from failure feedback (skip failed step, substitute alternative strategy)
+  - `ReActAgent.run()` — updated to execute plan with replanning loop (max_replans=2 default)
+  - Cross-cutting rule maintained: every output is still a schema-validated Pydantic Diagnosis
+- `src/incident_agent/agents/__init__.py` — exports Plan, StepFailure
+- `src/incident_agent/__init__.py` — exports Plan, StepFailure
+- `src/incident_agent/workflows/__init__.py` — exports Plan, PlanStep, StepFailure, generate_plan
+- `tests/test_stage5.py` — 35 tests covering plan generation, step execution, replanning, error recovery, schema validation
+
+### Changed
+- `src/incident_agent/agents/react_agent.py` — `run()` now uses plan-based execution with replanning instead of a single observe/reason/act pass
+
+### Verified
+- All 304 tests pass (269 existing + 35 Stage 5)
+- Replanning recovers from injected StepFailure and produces schema-valid Diagnosis objects
+- Plan generation works for all three strategies (standard, log_only, metrics_only)
+- Backward compatible: all Stage 3 and Stage 4 tests still pass unchanged
+
 ## [Stage 4] — 2026-09-18
 ### Added
 - `src/incident_agent/schemas/` package with Pydantic models:
