@@ -12,10 +12,12 @@ from __future__ import annotations
 from incident_agent.schemas.agent_output import (
     AgentOutput,
     EvidenceItem,
+    EvidenceType,
     IncidentMetadata,
     MetricAnomaly,
     ReasoningStep,
     RiskTier,
+    WorkerFinding,
 )
 from incident_agent.schemas.diagnosis import Diagnosis
 
@@ -23,8 +25,10 @@ __all__ = [
     "AgentOutput",
     "Diagnosis",
     "EvidenceItem",
+    "EvidenceType",
     "IncidentMetadata",
     "MetricAnomaly",
     "ReasoningStep",
     "RiskTier",
+    "WorkerFinding",
 ]

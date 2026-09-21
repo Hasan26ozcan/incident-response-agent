@@ -108,6 +108,33 @@ class ReasoningStep(BaseModel):
         return v.strip()
 
 
+class WorkerFinding(BaseModel):
+    """Structured output from a specialist worker agent.
+
+    Each worker (LogWorker, MetricsWorker, DeployHistoryWorker)
+    produces a WorkerFinding containing its evidence, reasoning,
+    and confidence score. All fields are validated by Pydantic.
+
+    Cross-cutting rule (Stage 4+): every agent output is a
+    validated Pydantic object.
+    """
+
+    worker_type: str = Field(min_length=1, description="Type of worker that produced this finding")
+    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    evidence: list[EvidenceItem] = Field(min_length=1, description="At least one evidence item required")
+    reasoning_steps: list[ReasoningStep] = Field(min_length=1, description="At least one reasoning step required")
+    confidence: float = Field(ge=0.0, le=1.0, description="Worker's confidence in its finding")
+    summary: str = Field(min_length=10, description="Human-readable summary of the worker's findings")
+
+    @field_validator("summary")
+    @classmethod
+    def summary_must_not_be_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 10:
+            raise ValueError("summary must be at least 10 characters")
+        return cleaned
+
+
 class AgentOutput(BaseModel):
     """Base interface for all agent outputs.
 
