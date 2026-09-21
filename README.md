@@ -32,6 +32,15 @@ decisions behind this stage.
 - CLI `diagnose` subcommand
 - **220 tests passing**
 
+✅ **Stage 6 — Orchestrator–Workers** (complete)
+
+- `TriageAgent` (`OrchestratorAgent`) classifies incidents and dispatches specialist workers
+- Parallel specialist agents: `LogWorker`, `MetricsWorker`, `DeployHistoryWorker`
+- Each worker produces a validated `WorkerFinding` Pydantic object
+- `OrchestrationState` lightweight state machine tracks the workflow
+- **356 tests passing** (52 Stage 6 + 304 existing)
+- See [`openspec/changes/006-orchestrator-workers/proposal.md`](./openspec/changes/006-orchestrator-workers/proposal.md) for the proposal
+
 ✅ **Stage 5 — Dynamic Planning & Error Recovery** (complete)
 
 - Plan-based execution with ordered diagnostic steps
@@ -42,7 +51,7 @@ decisions behind this stage.
 
 ✅ **Stage 4 — Structured Output & Prompt Engineering** (complete)
 
-- All agent outputs validated via Pydantic schemas (`Diagnosis`, `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`)
+- All agent outputs validated via Pydantic schemas (`Diagnosis`, `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`, `WorkerFinding`)
 - JSON-mode compatible serialization (`to_json()` / `from_json()`)
 - Prompt library with system prompt template, three few-shot examples, and `build_prompt()` utility
 - Cross-cutting rule enforced: every agent output is a validated Pydantic object
@@ -100,6 +109,8 @@ Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configur
 on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `prompts/`
 (prompt library with few-shot examples). Stage 5 added `workflows/plan.py` (Plan,
 PlanStep, StepFailure) and updated `ReActAgent` with plan-based execution and replanning.
+Stage 6 added `agents/worker.py` (LogWorker, MetricsWorker, DeployHistoryWorker) and
+`agents/orchestrator.py` (OrchestratorAgent, OrchestrationState).
 
 ## Getting started
 
@@ -124,7 +135,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # 269 tests — all should pass
+python -m pytest tests/ -v        # 356 tests — all should pass
 ```
 
 ### Verify the torch environment

@@ -242,6 +242,7 @@ class ReActAgent:
                 results[step_type] = meta
             elif step_type == "read_logs":
                 from incident_agent.tools import read_logs
+
                 logs = read_logs(plan.incident_id)
                 results[step_type] = logs
             elif step_type == "find_error_logs":
@@ -262,6 +263,7 @@ class ReActAgent:
                 results[step_type] = anomalies
             elif step_type == "read_deploys":
                 from incident_agent.tools import read_deploys
+
                 deploys = read_deploys(plan.incident_id)
                 results[step_type] = deploys
             elif step_type == "synthesize":

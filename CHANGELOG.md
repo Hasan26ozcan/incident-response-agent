@@ -27,6 +27,43 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 6] — 2026-09-21
+### Added
+- `src/incident_agent/agents/worker.py` — Specialist worker agents:
+  - `WorkerAgent` base class (ABC) with `observe()` / `analyze()` / `run()` pipeline
+  - `LogWorker` — parses logs, extracts error patterns, produces `WorkerFinding`
+  - `MetricsWorker` — analyzes metric time series, detects anomalies, produces `WorkerFinding`
+  - `DeployHistoryWorker` — correlates deploys with incident window, produces `WorkerFinding`
+- `src/incident_agent/agents/orchestrator.py` — OrchestratorAgent (triage agent):
+  - `OrchestrationState` — lightweight state machine (`INITIALIZED` → `DISPATCHED` → `PROCESSING` → `COMPLETED` → `SYNTHESIZED`)
+  - `OrchestrationStatus` — tracks completed/failed workers and findings
+  - `OrchestratorAgent.classify_incident()` — reads metadata and classifies risk
+  - `OrchestratorAgent.dispatch_workers()` — creates and runs all three specialist workers
+  - `OrchestratorAgent.synthesize()` — combines worker findings into a unified `Diagnosis`
+  - `OrchestratorAgent.run()` — full orchestration pipeline
+- `src/incident_agent/schemas/agent_output.py` — New `WorkerFinding` Pydantic model:
+  - `worker_type`, `incident_id`, `evidence`, `reasoning_steps`, `confidence`, `summary`
+  - All fields validated by Pydantic (cross-cutting rule)
+- `src/incident_agent/schemas/__init__.py` — Exports `WorkerFinding` and `EvidenceType`
+- `src/incident_agent/agents/__init__.py` — Exports all worker and orchestrator classes
+- `src/incident_agent/__init__.py` — Exports all Stage 6 additions
+- `openspec/changes/006-orchestrator-workers/proposal.md` — OpenSpec proposal
+- `tests/test_stage6.py` — 52 tests covering orchestration state machine, all three workers, orchestrator dispatch/synthesize/run, backward compatibility, and schema validation
+
+### Changed
+- `src/incident_agent/agents/react_agent.py` — `run()` still uses plan-based execution with replanning (Stage 5); now available alongside `OrchestratorAgent`
+- `src/incident_agent/__init__.py` — Added `OrchestratorAgent`, `OrchestrationState`, `LogWorker`, `MetricsWorker`, `DeployHistoryWorker`, `WorkerAgent`, `WorkerFinding`, `EvidenceType`
+
+### Verified
+- All 356 tests pass (52 Stage 6 + 304 existing)
+- Orchestrator dispatches all three workers and synthesizes a valid `Diagnosis`
+- Each worker produces a schema-valid `WorkerFinding`
+- `OrchestrationState` tracks all state transitions correctly
+- Workers handle failures gracefully without crashing the orchestration
+- Backward compatible: `ReActAgent` still produces `single_agent_react` diagnoses
+- Cross-cutting rule verified: every agent output is a validated Pydantic object
+- ruff check, ruff format, mypy, bandit — all green
+
 ## [Stage 5] — 2026-09-19
 ### Added
 - `src/incident_agent/workflows/plan.py` — Plan, PlanStep, PlanStepType, StepFailure, generate_plan()
