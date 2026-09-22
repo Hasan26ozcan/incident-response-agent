@@ -16,7 +16,7 @@ stages are cut short.
 
 - 20 synthetic incident scenarios across 19 categories
 - Gold answers, rubric, and validation tooling complete
-- **269 tests passing** across all stages — dataset generation, validation, integrity, leakage prevention, false-alarm handling, schema validation, prompt library, and more
+- **401+ tests passing** across all stages — dataset generation, validation, integrity, leakage prevention, false-alarm handling, schema validation, prompt library, and more
 - Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
 
 ✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
@@ -31,6 +31,16 @@ decisions behind this stage.
 - Tool functions for logs, metrics, deploys, metadata
 - CLI `diagnose` subcommand
 - **220 tests passing**
+
+✅ **Stage 7 — Hierarchical Swarm** (complete)
+
+- `IncidentCommander` class sits above `OrchestratorAgent` in the hierarchy
+- Synthesizes worker findings into a unified incident narrative
+- Makes escalation decisions (`escalate` / `monitor` / `resolve`) based on risk tier and confidence
+- `CommanderDiagnosis` Pydantic model extends `AgentOutput` with narrative, escalation decision, severity assessment
+- Contains the full underlying `Diagnosis` and all `WorkerFinding` objects
+- **401+ tests passing** (45+ Stage 7 + 356 existing)
+- See [`openspec/changes/007-hierarchical-swarm/proposal.md`](./openspec/changes/007-hierarchical-swarm/proposal.md) for the proposal
 
 ✅ **Stage 6 — Orchestrator–Workers** (complete)
 
@@ -109,7 +119,7 @@ Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configur
 on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `prompts/`
 (prompt library with few-shot examples). Stage 5 added `workflows/plan.py` (Plan,
 PlanStep, StepFailure) and updated `ReActAgent` with plan-based execution and replanning.
-Stage 6 added `agents/worker.py` (LogWorker, MetricsWorker, DeployHistoryWorker) and
+Stage 7 added `agents/incident_commander.py` (IncidentCommander) and `schemas/command_diagnosis.py` (CommanderDiagnosis). Stage 6 added `agents/worker.py` (LogWorker, MetricsWorker, DeployHistoryWorker) and
 `agents/orchestrator.py` (OrchestratorAgent, OrchestrationState).
 
 ## Getting started

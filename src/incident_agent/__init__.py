@@ -13,17 +13,23 @@ Stage 6: Multi-agent orchestrator–workers architecture — a triage
 agent dispatches specialist workers (logs, metrics, deploy history)
 and synthesizes their findings into a unified Diagnosis.
 
+Stage 7: Hierarchical swarm — an Incident Commander agent sits above
+the orchestrator, synthesizing worker findings into a unified incident
+narrative with escalation decisions.
+
 See:
   - incident_agent.schemas — Pydantic output schemas (Stage 4)
   - incident_agent.prompts — Prompt library (Stage 4)
   - incident_agent.agents.react_agent — ReAct agent (Stage 3→5)
   - incident_agent.agents.orchestrator — OrchestratorAgent (Stage 6)
   - incident_agent.agents.worker — Specialist worker agents (Stage 6)
+  - incident_agent.agents.incident_commander — IncidentCommander (Stage 7)
   - incident_agent.workflows.plan — Diagnostic plan with replanning (Stage 5)
 """
 
 __version__ = "0.1.0"
 
+from incident_agent.agents.incident_commander import IncidentCommander
 from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
@@ -37,6 +43,7 @@ from incident_agent.agents.worker import (
 )
 from incident_agent.schemas import (
     AgentOutput,
+    CommanderDiagnosis,
     EvidenceItem,
     IncidentMetadata,
     MetricAnomaly,
@@ -52,6 +59,8 @@ __all__ = [
     "ReActAgent",
     "OrchestratorAgent",
     "OrchestrationState",
+    "IncidentCommander",
+    "CommanderDiagnosis",
     "LogWorker",
     "MetricsWorker",
     "DeployHistoryWorker",

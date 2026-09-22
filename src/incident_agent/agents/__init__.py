@@ -2,7 +2,13 @@
 
 Populated starting Stage 3 (single-agent ReAct skeleton),
 extended through Stage 5 (dynamic planning and error recovery),
-and Stage 6 (multi-agent orchestrator–workers).
+Stage 6 (multi-agent orchestrator–workers),
+and Stage 7 (hierarchical swarm with Incident Commander).
+
+Stage 7 introduces the Incident Commander agent, which sits
+above the OrchestratorAgent in the hierarchy. It synthesizes
+worker findings into a unified incident narrative with
+escalation decisions.
 
 Stage 6 introduces the orchestrator–worker architecture:
 a triage agent dispatches specialist workers (logs, metrics,
@@ -21,6 +27,7 @@ diagnostic plans, execute them step-by-step, and replan when a step
 fails. See incident_agent.workflows.plan for the plan data structures.
 """
 
+from incident_agent.agents.incident_commander import IncidentCommander
 from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
@@ -39,6 +46,7 @@ __all__ = [
     "Diagnosis",
     "OrchestratorAgent",
     "OrchestrationState",
+    "IncidentCommander",
     "LogWorker",
     "MetricsWorker",
     "DeployHistoryWorker",
