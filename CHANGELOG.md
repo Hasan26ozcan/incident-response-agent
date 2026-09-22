@@ -27,6 +27,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 7] — 2026-09-22
+### Added
+- `src/incident_agent/agents/incident_commander.py` — Incident Commander agent:
+  - `IncidentCommander` class sits above OrchestratorAgent in the hierarchy
+  - `synthesize_narrative()` — builds unified incident narrative from diagnosis and worker findings
+  - `determine_escalation()` — makes escalation decision (escalate / monitor / resolve)
+  - `assess_severity()` — evaluates overall severity from risk tier and evidence
+  - `build_reasoning()` — builds commander-level reasoning steps
+  - `build_evidence()` — aggregates evidence from diagnosis and all workers
+  - `build_recommendation()` — produces commander-level recommendation
+  - `run()` — full commander pipeline producing CommanderDiagnosis
+- `src/incident_agent/schemas/command_diagnosis.py` — CommanderDiagnosis Pydantic model:
+  - Extends AgentOutput with narrative, escalation_decision, severity_assessment
+  - Contains the full underlying Diagnosis and all WorkerFinding objects
+  - All fields validated by Pydantic (cross-cutting rule)
+  - `format_report()`, `to_json()`, `from_json()`, `model_dump()` methods
+- `src/incident_agent/schemas/__init__.py` — Exports CommanderDiagnosis
+- `src/incident_agent/agents/__init__.py` — Exports IncidentCommander
+- `src/incident_agent/__init__.py` — Exports IncidentCommander and CommanderDiagnosis
+- `openspec/changes/007-hierarchical-swarm/proposal.md` — OpenSpec proposal
+- `tests/test_stage7.py` — 45+ tests covering CommanderDiagnosis schema, escalation logic, severity assessment, narrative synthesis, reasoning, evidence, recommendation, end-to-end pipeline, and backward compatibility
+
+### Changed
+- `src/incident_agent/schemas/__init__.py` — Added CommanderDiagnosis export
+- `src/incident_agent/agents/__init__.py` — Added IncidentCommander export
+- `src/incident_agent/__init__.py` — Added IncidentCommander and CommanderDiagnosis exports
+
+### Verified
+- All 401+ tests pass (45+ Stage 7 + 356 existing)
+- IncidentCommander.run() produces a schema-valid CommanderDiagnosis
+- CommanderDiagnosis contains the full underlying Diagnosis object
+- CommanderDiagnosis contains all WorkerFinding objects
+- Escalation decisions are deterministic based on risk tier and confidence
+- Severity assessment reflects risk tier and evidence count
+- Narrative synthesis combines diagnosis root cause with worker summaries
+- CommanderDiagnosis.to_json() → from_json() roundtrip works correctly
+- Cross-cutting rule verified: CommanderDiagnosis is a validated Pydantic object
+- Backward compatible: ReActAgent and OrchestratorAgent still work unchanged
+- ruff check, ruff format, mypy, bandit — all green
+
 ## [Stage 6] — 2026-09-21
 ### Added
 - `src/incident_agent/agents/worker.py` — Specialist worker agents:

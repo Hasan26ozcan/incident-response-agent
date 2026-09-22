@@ -19,10 +19,12 @@ from incident_agent.schemas.agent_output import (
     RiskTier,
     WorkerFinding,
 )
+from incident_agent.schemas.command_diagnosis import CommanderDiagnosis
 from incident_agent.schemas.diagnosis import Diagnosis
 
 __all__ = [
     "AgentOutput",
+    "CommanderDiagnosis",
     "Diagnosis",
     "EvidenceItem",
     "EvidenceType",
