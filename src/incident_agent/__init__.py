@@ -17,6 +17,10 @@ Stage 7: Hierarchical swarm — an Incident Commander agent sits above
 the orchestrator, synthesizing worker findings into a unified incident
 narrative with escalation decisions.
 
+Stage 8: Debate mechanism — a root-cause agent argues for the diagnosis
+while a forensic examiner agent challenges it, producing a
+before/after false-positive rate comparison and a final verdict.
+
 See:
   - incident_agent.schemas — Pydantic output schemas (Stage 4)
   - incident_agent.prompts — Prompt library (Stage 4)
@@ -29,12 +33,15 @@ See:
 
 __version__ = "0.1.0"
 
+from incident_agent.agents.debate_mechanism import DebateMechanism
+from incident_agent.agents.forensic_examiner_agent import ForensicExaminerAgent
 from incident_agent.agents.incident_commander import IncidentCommander
 from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
+from incident_agent.agents.root_cause_agent import RootCauseAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
     LogWorker,
@@ -43,7 +50,9 @@ from incident_agent.agents.worker import (
 )
 from incident_agent.schemas import (
     AgentOutput,
+    Argument,
     CommanderDiagnosis,
+    DebateOutcome,
     EvidenceItem,
     IncidentMetadata,
     MetricAnomaly,
@@ -74,4 +83,9 @@ __all__ = [
     "WorkerFinding",
     "Plan",
     "StepFailure",
+    "Argument",
+    "DebateOutcome",
+    "RootCauseAgent",
+    "ForensicExaminerAgent",
+    "DebateMechanism",
 ]

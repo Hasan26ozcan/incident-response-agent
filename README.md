@@ -16,7 +16,7 @@ stages are cut short.
 
 - 20 synthetic incident scenarios across 19 categories
 - Gold answers, rubric, and validation tooling complete
-- **401+ tests passing** across all stages — dataset generation, validation, integrity, leakage prevention, false-alarm handling, schema validation, prompt library, and more
+- **461+ tests passing** across all stages
 - Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
 
 ✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
@@ -32,6 +32,17 @@ decisions behind this stage.
 - CLI `diagnose` subcommand
 - **220 tests passing**
 
+✅ **Stage 8 — Debate Mechanism** (complete)
+
+- `Argument` and `DebateOutcome` Pydantic models for debate outputs
+- `RootCauseAgent` argues for the initial diagnosis
+- `ForensicExaminerAgent` challenges the diagnosis looking for false positives
+- `DebateMechanism` orchestrates the debate and produces before/after false-positive rate comparison
+- Verdict system: confirmed / challenged / revised
+- `DebateOutcome.to_json()` / `from_json()` roundtrip and `format_report()`
+- **461 tests passing** (55 Stage 8 + 406 existing)
+- See [`openspec/changes/008-debate-mechanism/proposal.md`](./openspec/changes/008-debate-mechanism/proposal.md) for the proposal
+
 ✅ **Stage 7 — Hierarchical Swarm** (complete)
 
 - `IncidentCommander` class sits above `OrchestratorAgent` in the hierarchy
@@ -39,7 +50,7 @@ decisions behind this stage.
 - Makes escalation decisions (`escalate` / `monitor` / `resolve`) based on risk tier and confidence
 - `CommanderDiagnosis` Pydantic model extends `AgentOutput` with narrative, escalation decision, severity assessment
 - Contains the full underlying `Diagnosis` and all `WorkerFinding` objects
-- **401+ tests passing** (45+ Stage 7 + 356 existing)
+- **461+ tests passing** (55+ Stage 7 + 406 existing)
 - See [`openspec/changes/007-hierarchical-swarm/proposal.md`](./openspec/changes/007-hierarchical-swarm/proposal.md) for the proposal
 
 ✅ **Stage 6 — Orchestrator–Workers** (complete)
@@ -145,7 +156,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # 356 tests — all should pass
+python -m pytest tests/ -v        # 461 tests — all should pass
 ```
 
 ### Verify the torch environment
