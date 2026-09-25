@@ -10,14 +10,10 @@ above the OrchestratorAgent in the hierarchy. It synthesizes
 worker findings into a unified incident narrative with
 escalation decisions.
 
-Stage 6 introduces the orchestrator–worker architecture:
-a triage agent dispatches specialist workers (logs, metrics,
-deploy history) and synthesizes their findings into a
-unified Diagnosis.
-
-See ROADMAP.md Phase C and openspec/agent-responsibility-matrix.md
-for what each agent introduced here is responsible for and what
-risk tier its actions fall under.
+Stage 8 introduces the debate mechanism:
+a root-cause agent argues for the initial diagnosis
+while a forensic examiner agent challenges it, producing
+a before/after false-positive rate comparison and a final verdict.
 
 Stage 4: All agent outputs are Pydantic-validated objects —
 see incident_agent.schemas for the canonical schema definitions.
@@ -27,12 +23,15 @@ diagnostic plans, execute them step-by-step, and replan when a step
 fails. See incident_agent.workflows.plan for the plan data structures.
 """
 
+from incident_agent.agents.debate_mechanism import DebateMechanism
+from incident_agent.agents.forensic_examiner_agent import ForensicExaminerAgent
 from incident_agent.agents.incident_commander import IncidentCommander
 from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
+from incident_agent.agents.root_cause_agent import RootCauseAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
     LogWorker,
@@ -53,4 +52,7 @@ __all__ = [
     "WorkerAgent",
     "Plan",
     "StepFailure",
+    "RootCauseAgent",
+    "ForensicExaminerAgent",
+    "DebateMechanism",
 ]

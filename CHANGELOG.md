@@ -27,6 +27,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 8] — 2026-09-23
+### Added
+- `src/incident_agent/schemas/debate.py` — `Argument` and `DebateOutcome` Pydantic models:
+  - `Argument` model with `agent`, `point`, `evidence_refs`, `confidence`
+  - `DebateOutcome` extends `AgentOutput` with `original_diagnosis`, `root_cause_arguments`, `forensic_challenges`, `verdict`, `false_positive_rate_before/after`, `confidence_adjustment`, `final_diagnosis`, `debate_rounds`, `reasoning_steps`, `recommendation`
+  - `format_report()`, `to_json()`, `from_json()`, `model_dump()` methods
+  - Pydantic validators for `verdict` and confidence bounds
+- `src/incident_agent/agents/root_cause_agent.py` — `RootCauseAgent` class:
+  - `build_arguments(diagnosis)` — produces supporting arguments citing evidence
+  - `analyze(diagnosis)` — entry point returning list of `Argument` objects
+- `src/incident_agent/agents/forensic_examiner_agent.py` — `ForensicExaminerAgent` class:
+  - `build_challenges(diagnosis)` — produces challenges looking for false positives
+  - `challenge(diagnosis)` — entry point returning list of `Argument` objects
+- `src/incident_agent/agents/debate_mechanism.py` — `DebateMechanism` class:
+  - `run(diagnosis)` — full debate pipeline producing `DebateOutcome`
+  - `calculate_false_positive_rate()` — deterministic FPR calculation
+  - `determine_verdict()` — verdict logic (confirmed/challenged/revised)
+- `openspec/changes/008-debate-mechanism/proposal.md` — OpenSpec proposal
+- `tests/test_stage8.py` — 55 tests covering Argument schema, DebateOutcome schema, RootCauseAgent, ForensicExaminerAgent, DebateMechanism pipeline, false-positive rate comparison, verdict determination, debate rounds, schema validation, and backward compatibility
+- `src/incident_agent/schemas/__init__.py` — Added `Argument`, `DebateOutcome` exports
+- `src/incident_agent/agents/__init__.py` — Added `RootCauseAgent`, `ForensicExaminerAgent`, `DebateMechanism` exports
+- `src/incident_agent/__init__.py` — Added `Argument`, `DebateOutcome`, all new agents
+
+### Verified
+- All 461 tests pass (55 Stage 8 + 406 existing)
+- `DebateMechanism.run()` produces a schema-valid `DebateOutcome`
+- False-positive rate comparison shows before/after FPR values
+- Verdict is "confirmed" when root-cause arguments outweigh challenges
+- Verdict is "challenged" when challenges are moderate
+- Verdict is "revised" when challenges outweigh root-cause arguments
+- Cross-cutting rule verified: `DebateOutcome` is a validated Pydantic object
+- Backward compatible: `ReActAgent`, `OrchestratorAgent`, and `IncidentCommander` still work unchanged
+- ruff check, ruff format, mypy, bandit — all green
+
 ## [Stage 7] — 2026-09-22
 ### Added
 - `src/incident_agent/agents/incident_commander.py` — Incident Commander agent:

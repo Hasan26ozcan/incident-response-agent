@@ -20,11 +20,14 @@ from incident_agent.schemas.agent_output import (
     WorkerFinding,
 )
 from incident_agent.schemas.command_diagnosis import CommanderDiagnosis
+from incident_agent.schemas.debate import Argument, DebateOutcome
 from incident_agent.schemas.diagnosis import Diagnosis
 
 __all__ = [
     "AgentOutput",
+    "Argument",
     "CommanderDiagnosis",
+    "DebateOutcome",
     "Diagnosis",
     "EvidenceItem",
     "EvidenceType",
