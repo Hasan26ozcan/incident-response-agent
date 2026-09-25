@@ -21,6 +21,11 @@ Stage 8: Debate mechanism — a root-cause agent argues for the diagnosis
 while a forensic examiner agent challenges it, producing a
 before/after false-positive rate comparison and a final verdict.
 
+Stage 9: Tree-of-Thought + Plan-and-Solve — parallel hypothesis
+branching generates multiple root-cause explanations, scores them
+independently, and selects the most likely scenario with
+Plan-and-Solve validation.
+
 See:
   - incident_agent.schemas — Pydantic output schemas (Stage 4)
   - incident_agent.prompts — Prompt library (Stage 4)
@@ -29,6 +34,7 @@ See:
   - incident_agent.agents.worker — Specialist worker agents (Stage 6)
   - incident_agent.agents.incident_commander — IncidentCommander (Stage 7)
   - incident_agent.workflows.plan — Diagnostic plan with replanning (Stage 5)
+  - incident_agent.agents.tree_of_thought_agent — TreeOfThoughtAgent (Stage 9)
 """
 
 __version__ = "0.1.0"
@@ -42,6 +48,7 @@ from incident_agent.agents.orchestrator import (
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
 from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
     LogWorker,
@@ -54,10 +61,12 @@ from incident_agent.schemas import (
     CommanderDiagnosis,
     DebateOutcome,
     EvidenceItem,
+    Hypothesis,
     IncidentMetadata,
     MetricAnomaly,
     ReasoningStep,
     RiskTier,
+    TreeOfThoughtResult,
     WorkerFinding,
 )
 from incident_agent.workflows.plan import Plan, StepFailure
@@ -88,4 +97,7 @@ __all__ = [
     "RootCauseAgent",
     "ForensicExaminerAgent",
     "DebateMechanism",
+    "TreeOfThoughtAgent",
+    "Hypothesis",
+    "TreeOfThoughtResult",
 ]

@@ -15,6 +15,11 @@ a root-cause agent argues for the initial diagnosis
 while a forensic examiner agent challenges it, producing
 a before/after false-positive rate comparison and a final verdict.
 
+Stage 9 introduces Tree-of-Thought + Plan-and-Solve:
+parallel hypothesis branching generates multiple root-cause
+explanations, scores them independently, and selects the
+most likely scenario with Plan-and-Solve validation.
+
 Stage 4: All agent outputs are Pydantic-validated objects —
 see incident_agent.schemas for the canonical schema definitions.
 
@@ -32,6 +37,7 @@ from incident_agent.agents.orchestrator import (
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
 from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
     LogWorker,
@@ -55,4 +61,5 @@ __all__ = [
     "RootCauseAgent",
     "ForensicExaminerAgent",
     "DebateMechanism",
+    "TreeOfThoughtAgent",
 ]

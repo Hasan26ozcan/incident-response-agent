@@ -49,11 +49,11 @@ history). State management via LangGraph.
 Incident Commander agent added; synthesizes workers' findings.
 *Output:* end-to-end diagnosis flow (no actions yet).
 
-**Stage 8 — Debate Mechanism**
+**Stage 8 — Debate Mechanism** ✅
 Root-cause agent vs. "forensic examiner" agent debate.
 *Output:* before/after false-positive rate comparison.
 
-**Stage 9 — Tree-of-Thought + Plan-and-Solve**
+**Stage 9 — Tree-of-Thought + Plan-and-Solve** ✅
 Parallel hypothesis branching on complex scenarios; most likely scenario
 selected.
 *Output:* measurable accuracy improvement on the gold set.

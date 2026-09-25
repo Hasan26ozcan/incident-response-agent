@@ -16,7 +16,7 @@ stages are cut short.
 
 - 20 synthetic incident scenarios across 19 categories
 - Gold answers, rubric, and validation tooling complete
-- **461+ tests passing** across all stages
+- **519+ tests passing** across all stages
 - Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
 
 ✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
@@ -31,6 +31,18 @@ decisions behind this stage.
 - Tool functions for logs, metrics, deploys, metadata
 - CLI `diagnose` subcommand
 - **220 tests passing**
+
+✅ **Stage 9 — Tree-of-Thought + Plan-and-Solve** (complete)
+
+- `Hypothesis` and `TreeOfThoughtResult` Pydantic models for parallel hypothesis branching
+- `TreeOfThoughtAgent` generates N parallel hypotheses from a diagnosis
+- Each hypothesis is independently scored against the evidence
+- Best hypothesis is selected and validated via Plan-and-Solve
+- `accuracy_improvement` measures the measurable accuracy gain from ToT
+- Verdict-driven confidence adjustment with before/after comparison
+- `TreeOfThoughtResult.to_json()` / `from_json()` roundtrip and `format_report()`
+- **519 tests passing** (58 Stage 9 + 461 existing)
+- See [`openspec/changes/008-debate-mechanism/proposal.md`](./openspec/changes/008-debate-mechanism/proposal.md) for the proposal
 
 ✅ **Stage 8 — Debate Mechanism** (complete)
 

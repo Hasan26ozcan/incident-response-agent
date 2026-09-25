@@ -27,6 +27,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PyTorch 2.14.0+cpu and NumPy 2.4.6 available and interoperable
 - Gold answers kept structurally separate from agent-visible data (no eval leakage)
 
+## [Stage 9] — 2026-09-25
+### Added
+- `src/incident_agent/schemas/tree_of_thought.py` — `Hypothesis` and `TreeOfThoughtResult` Pydantic models:
+  - `Hypothesis` model with `hypothesis_id`, `scenario`, `root_cause`, `confidence`, `supporting_evidence`, `reasoning_steps`, `category`, `risk_tier`
+  - `TreeOfThoughtResult` extends `AgentOutput` with `hypotheses`, `selected_hypothesis`, `selected_hypothesis_index`, `reasoning_steps`, `selected_evidence`, `plan_and_solve_validation`, `accuracy_improvement`, `final_diagnosis`, `hypothesis_scores`
+  - `format_report()`, `to_json()`, `from_json()`, `model_dump()` methods
+  - Pydantic validators for `accuracy_improvement`, `confidence`, and `verdict`
+- `src/incident_agent/agents/tree_of_thought_agent.py` — `TreeOfThoughtAgent` class:
+  - `generate_hypotheses(diagnosis)` — produces N parallel alternative root-cause hypotheses
+  - `evaluate_hypotheses(hypotheses)` — scores each hypothesis against evidence
+  - `select_best_hypothesis(hypotheses, scores)` — picks the highest-scoring hypothesis
+  - `plan_and_solve(hypothesis, diagnosis)` — validates selected hypothesis via Plan-and-Solve
+  - `run(diagnosis)` — full Tree-of-Thought pipeline producing `TreeOfThoughtResult`
+- `tests/test_stage9.py` — 58 tests covering Hypothesis schema, TreeOfThoughtResult schema, hypothesis generation and scoring, best-hypothesis selection, Plan-and-Solve validation, accuracy improvement, schema validation, and backward compatibility
+- `src/incident_agent/schemas/__init__.py` — Added `Hypothesis`, `TreeOfThoughtResult` exports
+- `src/incident_agent/agents/__init__.py` — Added `TreeOfThoughtAgent` export
+- `src/incident_agent/__init__.py` — Added `Hypothesis`, `TreeOfThoughtResult`, `TreeOfThoughtAgent` exports
+
+### Changed
+- `src/incident_agent/schemas/__init__.py` — Added `Hypothesis` and `TreeOfThoughtResult` exports
+- `src/incident_agent/agents/__init__.py` — Added `TreeOfThoughtAgent` export
+- `src/incident_agent/__init__.py` — Added `Hypothesis`, `TreeOfThoughtResult`, `TreeOfThoughtAgent` exports
+
+### Verified
+- All 519 tests pass (58 Stage 9 + 461 existing)
+- `TreeOfThoughtAgent.run()` produces a schema-valid `TreeOfThoughtResult`
+- Multiple hypotheses (≥2) are generated in parallel
+- Best hypothesis is selected based on highest evaluation score
+- Plan-and-Solve validation is performed on the selected hypothesis
+- Accuracy improvement is measurable (0.0–1.0 range)
+- Cross-cutting rule verified: `TreeOfThoughtResult` is a validated Pydantic object
+- Backward compatible: `ReActAgent`, `OrchestratorAgent`, `IncidentCommander`, and `DebateMechanism` still work unchanged
+- ruff check, ruff format, mypy, bandit — all green
+
 ## [Stage 8] — 2026-09-23
 ### Added
 - `src/incident_agent/schemas/debate.py` — `Argument` and `DebateOutcome` Pydantic models:
