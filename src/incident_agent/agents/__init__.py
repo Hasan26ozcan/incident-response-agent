@@ -20,6 +20,9 @@ parallel hypothesis branching generates multiple root-cause
 explanations, scores them independently, and selects the
 most likely scenario with Plan-and-Solve validation.
 
+Stage 10: Vector DB & Hybrid Retrieval — RetrievalAgent provides
+knowledge-grounded incident retrieval via BM25 + Dense + RRF fusion.
+
 Stage 4: All agent outputs are Pydantic-validated objects —
 see incident_agent.schemas for the canonical schema definitions.
 
@@ -37,6 +40,7 @@ from incident_agent.agents.orchestrator import (
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
 from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.retrieval_agent import RetrievalAgent
 from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
@@ -62,4 +66,5 @@ __all__ = [
     "ForensicExaminerAgent",
     "DebateMechanism",
     "TreeOfThoughtAgent",
+    "RetrievalAgent",
 ]

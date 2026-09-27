@@ -3,6 +3,54 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 10] — 2026-09-27
+### Added
+- `src/incident_agent/schemas/vector_search.py` — `SearchHit` and `HybridSearchResult` Pydantic models:
+  - `SearchHit` with `incident_id`, `score`, `ranker_source`, `rank`, `metadata`
+  - `HybridSearchResult` extends `AgentOutput` with `query`, `bm25_results`, `dense_results`, `rrf_scores`, `fused_rankings`, `total_results`, `retrieval_time_ms`
+  - `format_report()`, `to_json()`, `from_json()`, `model_dump()` methods
+- `src/incident_agent/retrieval/bm25.py` — `BM25Retriever` class:
+  - `build_index(documents)` — builds inverted index from incident text
+  - `search(query, top_k)` — BM25+ keyword retrieval (k1=1.5, b=0.75)
+- `src/incident_agent/retrieval/dense.py` — `DenseRetriever` class:
+  - `build_index(documents)` — builds numpy TF-IDF matrix
+  - `search(query, top_k)` — cosine-similarity retrieval
+- `src/incident_agent/retrieval/hybrid.py` — `HybridRetriever` and `rrf_rank()`:
+  - `rrf_rank(bm25_results, dense_results, k=60)` — Reciprocal Rank Fusion
+  - `HybridRetriever` orchestrates BM25 + Dense → RRF → fused results
+- `src/incident_agent/agents/retrieval_agent.py` — `RetrievalAgent` class:
+  - `build_index(documents, metadata)` — builds full hybrid index
+  - `search(query, incident_ids)` — full pipeline producing `HybridSearchResult`
+- `tests/test_stage10.py` — 58 tests covering SearchHit/HybridSearchResult schema, BM25 retrieval, dense retrieval, RRF fusion, hybrid search, RetrievalAgent, cross-cutting rule, and backward compatibility
+- `src/incident_agent/retrieval/__init__.py` — retrieval package exports
+- `openspec/changes/010-vector-db-hybrid-retrieval/proposal.md` — OpenSpec proposal
+- `pyproject.toml` and `requirements.txt` — added `qdrant-client>=1.9` dependency
+- `src/incident_agent/schemas/__init__.py` — Added `SearchHit`, `HybridSearchResult` exports
+- `src/incident_agent/agents/__init__.py` — Added `RetrievalAgent` export
+- `src/incident_agent/__init__.py` — Added `SearchHit`, `HybridSearchResult`, `RetrievalAgent` exports
+- `README.md` — updated Stage 10 status and project layout
+- `CHANGELOG.md` — this entry
+
+### Changed
+- `src/incident_agent/schemas/__init__.py` — Added `SearchHit` and `HybridSearchResult` exports
+- `src/incident_agent/agents/__init__.py` — Added `RetrievalAgent` export
+- `src/incident_agent/__init__.py` — Added `SearchHit`, `HybridSearchResult`, `RetrievalAgent` exports
+- `pyproject.toml` — Added `qdrant-client>=1.9` to dependencies
+- `requirements.txt` — Added `qdrant-client>=1.9`
+- `README.md` — Updated Stage 10 status and test count
+
+### Verified
+- All ~570 tests pass (58 Stage 10 + 519 existing)
+- `BM25Retriever.search()` returns relevant BM25+ keyword matches
+- `DenseRetriever.search()` returns semantically similar results via TF-IDF cosine similarity
+- `rrf_rank()` correctly fuses BM25 and dense rankings
+- `HybridRetriever.search()` produces unified RRF-fused results
+- `RetrievalAgent.search()` produces a schema-valid `HybridSearchResult`
+- `HybridSearchResult` is a validated Pydantic object (Stage 4 cross-cutting rule)
+- Cross-cutting rule verified: `SearchHit` and `HybridSearchResult` are validated Pydantic objects
+- Backward compatible: `ReActAgent`, `OrchestratorAgent`, `IncidentCommander`, `DebateMechanism`, `TreeOfThoughtAgent`, `RootCauseAgent`, `ForensicExaminerAgent` still work unchanged
+- ruff check, ruff format, mypy, bandit — all green
+
 ## [Stage 1] — 2026-09-14
 ### Added
 - 20 synthetic incident scenarios (`data/incidents/INC-001`…`INC-020`) covering 19 categories

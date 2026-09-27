@@ -26,6 +26,10 @@ branching generates multiple root-cause explanations, scores them
 independently, and selects the most likely scenario with
 Plan-and-Solve validation.
 
+Stage 10: Vector DB & Hybrid Retrieval — BM25 + Dense retrieval
+with Reciprocal Rank Fusion (RRF). Knowledge-grounded incident
+retrieval for evidence-based diagnosis.
+
 See:
   - incident_agent.schemas — Pydantic output schemas (Stage 4)
   - incident_agent.prompts — Prompt library (Stage 4)
@@ -35,6 +39,7 @@ See:
   - incident_agent.agents.incident_commander — IncidentCommander (Stage 7)
   - incident_agent.workflows.plan — Diagnostic plan with replanning (Stage 5)
   - incident_agent.agents.tree_of_thought_agent — TreeOfThoughtAgent (Stage 9)
+  - incident_agent.agents.retrieval_agent — RetrievalAgent (Stage 10)
 """
 
 __version__ = "0.1.0"
@@ -48,6 +53,7 @@ from incident_agent.agents.orchestrator import (
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
 from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.retrieval_agent import RetrievalAgent
 from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
@@ -61,11 +67,13 @@ from incident_agent.schemas import (
     CommanderDiagnosis,
     DebateOutcome,
     EvidenceItem,
+    HybridSearchResult,
     Hypothesis,
     IncidentMetadata,
     MetricAnomaly,
     ReasoningStep,
     RiskTier,
+    SearchHit,
     TreeOfThoughtResult,
     WorkerFinding,
 )
@@ -100,4 +108,7 @@ __all__ = [
     "TreeOfThoughtAgent",
     "Hypothesis",
     "TreeOfThoughtResult",
+    "SearchHit",
+    "HybridSearchResult",
+    "RetrievalAgent",
 ]

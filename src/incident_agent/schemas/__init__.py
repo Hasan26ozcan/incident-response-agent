@@ -8,6 +8,9 @@ the agent responsibility matrix (§ Cross-cutting rules, rule #3).
 
 Stage 9: Tree-of-Thought + Plan-and-Solve adds Hypothesis and
 TreeOfThoughtResult schemas for parallel hypothesis branching.
+
+Stage 10: Vector DB & Hybrid Retrieval adds SearchHit and
+HybridSearchResult schemas for knowledge-grounded retrieval.
 """
 
 from __future__ import annotations
@@ -29,6 +32,10 @@ from incident_agent.schemas.tree_of_thought import (
     Hypothesis,
     TreeOfThoughtResult,
 )
+from incident_agent.schemas.vector_search import (
+    HybridSearchResult,
+    SearchHit,
+)
 
 __all__ = [
     "AgentOutput",
@@ -38,11 +45,13 @@ __all__ = [
     "Diagnosis",
     "EvidenceItem",
     "EvidenceType",
+    "HybridSearchResult",
     "Hypothesis",
     "IncidentMetadata",
     "MetricAnomaly",
     "ReasoningStep",
     "RiskTier",
+    "SearchHit",
     "TreeOfThoughtResult",
     "WorkerFinding",
 ]

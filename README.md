@@ -32,6 +32,17 @@ decisions behind this stage.
 - CLI `diagnose` subcommand
 - **220 tests passing**
 
+✅ **Stage 10 — Vector DB & Hybrid Retrieval** (complete)
+
+- `SearchHit` and `HybridSearchResult` Pydantic models for retrieval output
+- `BM25Retriever`: keyword-based BM25+ retrieval over incident text
+- `DenseRetriever`: numpy TF-IDF cosine-similarity retrieval
+- `rrf_rank()` and `HybridRetriever`: Reciprocal Rank Fusion of BM25 + Dense
+- `RetrievalAgent`: full hybrid search pipeline producing validated `HybridSearchResult`
+- `qdrant-client` dependency for vector storage (local/in-memory mode)
+- **~570 tests passing** (58+ Stage 10 + 519 existing)
+- See [`openspec/changes/010-vector-db-hybrid-retrieval/proposal.md`](./openspec/changes/010-vector-db-hybrid-retrieval/proposal.md) for the proposal
+
 ✅ **Stage 9 — Tree-of-Thought + Plan-and-Solve** (complete)
 
 - `Hypothesis` and `TreeOfThoughtResult` Pydantic models for parallel hypothesis branching
@@ -42,7 +53,7 @@ decisions behind this stage.
 - Verdict-driven confidence adjustment with before/after comparison
 - `TreeOfThoughtResult.to_json()` / `from_json()` roundtrip and `format_report()`
 - **519 tests passing** (58 Stage 9 + 461 existing)
-- See [`openspec/changes/008-debate-mechanism/proposal.md`](./openspec/changes/008-debate-mechanism/proposal.md) for the proposal
+- See [`openspec/changes/009-tree-of-thought/proposal.md`](./openspec/changes/009-tree-of-thought/proposal.md) for the proposal
 
 ✅ **Stage 8 — Debate Mechanism** (complete)
 
@@ -135,7 +146,9 @@ incident-response-agent/
     ├── proposal.md                          # Stage 0 proposal (scope, architecture)
     ├── agent-responsibility-matrix.md       # Who does what, and who may act
     ├── risk-classification.md               # Low / medium / high risk actions
-    └── comparison-bmad-speckit-openspec.md  # BMAD vs Spec Kit vs OpenSpec
+    ├── comparison-bmad-speckit-openspec.md  # BMAD vs Spec Kit vs OpenSpec
+    └── changes/                             # Per-stage OpenSpec proposals
+        └── 010-vector-db-hybrid-retrieval/  # Stage 10 proposal
 ```
 
 Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configuration
@@ -144,6 +157,8 @@ on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `promp
 PlanStep, StepFailure) and updated `ReActAgent` with plan-based execution and replanning.
 Stage 7 added `agents/incident_commander.py` (IncidentCommander) and `schemas/command_diagnosis.py` (CommanderDiagnosis). Stage 6 added `agents/worker.py` (LogWorker, MetricsWorker, DeployHistoryWorker) and
 `agents/orchestrator.py` (OrchestratorAgent, OrchestrationState).
+Stage 10 added `retrieval/` (BM25, Dense, Hybrid, RRF) and `schemas/vector_search.py`
+(SearchHit, HybridSearchResult), plus `agents/retrieval_agent.py` (RetrievalAgent).
 
 ## Getting started
 
@@ -168,7 +183,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # 461 tests — all should pass
+python -m pytest tests/ -v        # ~570 tests — all should pass
 ```
 
 ### Verify the torch environment
