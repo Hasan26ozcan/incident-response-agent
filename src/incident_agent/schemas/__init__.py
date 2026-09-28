@@ -28,6 +28,10 @@ from incident_agent.schemas.agent_output import (
 from incident_agent.schemas.command_diagnosis import CommanderDiagnosis
 from incident_agent.schemas.debate import Argument, DebateOutcome
 from incident_agent.schemas.diagnosis import Diagnosis
+from incident_agent.schemas.reranking import (
+    RelevanceDelta,
+    RerankedResult,
+)
 from incident_agent.schemas.tree_of_thought import (
     Hypothesis,
     TreeOfThoughtResult,
@@ -50,6 +54,8 @@ __all__ = [
     "IncidentMetadata",
     "MetricAnomaly",
     "ReasoningStep",
+    "RelevanceDelta",
+    "RerankedResult",
     "RiskTier",
     "SearchHit",
     "TreeOfThoughtResult",

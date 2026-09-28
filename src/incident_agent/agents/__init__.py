@@ -39,8 +39,9 @@ from incident_agent.agents.orchestrator import (
     OrchestratorAgent,
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
-from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.reranker_agent import RerankerAgent
 from incident_agent.agents.retrieval_agent import RetrievalAgent
+from incident_agent.agents.root_cause_agent import RootCauseAgent
 from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
@@ -67,4 +68,5 @@ __all__ = [
     "DebateMechanism",
     "TreeOfThoughtAgent",
     "RetrievalAgent",
+    "RerankerAgent",
 ]

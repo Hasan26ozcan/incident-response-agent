@@ -3,6 +3,49 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 11] — Reranking — 2026-09-28
+### Added
+- `src/incident_agent/schemas/reranking.py` — `RelevanceDelta` and `RerankedResult` Pydantic models:
+  - `RelevanceDelta` with `incident_id`, `rrf_score`, `cross_encoder_score`, `delta`, `rank_change`
+  - `RerankedResult` extends `AgentOutput` with `query`, `pre_rerank_rankings`, `post_rerank_rankings`, `relevance_deltas`, `mean_reciprocal_rank_before/after`, `precision_at_k_before/after`, `improvement_score` (computed), `reranking_time_ms`, `total_results`, `retrieval_time_ms`
+  - `format_report()`, `to_json()`, `from_json()`, `model_dump()` methods
+  - `improvement_score` as `@computed_field` derived from before/after metrics
+- `src/incident_agent/retrieval/reranker.py` — `CrossEncoderReranker` class:
+  - `build_index(documents)` — builds TF-IDF vocabulary and BM25 baseline index
+  - `rerank(query, candidate_ids, documents, top_k)` — cross-encoder re-scores query-document pairs jointly using interaction features and a deterministic MLP
+  - `search(query, candidate_ids, documents, top_k)` — convenience method combining candidate selection and re-ranking
+- `src/incident_agent/agents/reranker_agent.py` — `RerankerAgent` class:
+  - `build_index(documents, metadata)` — builds full reranker index
+  - `search(query, incident_ids)` — full pipeline: hybrid retrieval → cross-encoder reranking → before/after metrics
+  - Produces schema-validated `RerankedResult`
+  - Computes MRR and Precision@K before and after reranking
+  - `improvement_score` measures net retrieval quality gain
+- `tests/test_stage11.py` — 50 tests covering RelevanceDelta schema, RerankedResult schema, CrossEncoderReranker, RerankerAgent, MRR/Precision@K metrics, cross-cutting rule, and backward compatibility
+- `src/incident_agent/schemas/__init__.py` — Added `RelevanceDelta`, `RerankedResult` exports
+- `src/incident_agent/retrieval/__init__.py` — Added `CrossEncoderReranker` export
+- `src/incident_agent/agents/__init__.py` — Added `RerankerAgent` export
+- `src/incident_agent/__init__.py` — Added `RelevanceDelta`, `RerankedResult`, `RerankerAgent` exports
+- `openspec/changes/011-reranking/proposal.md` — OpenSpec proposal
+
+### Changed
+- `src/incident_agent/schemas/__init__.py` — Added `RelevanceDelta` and `RerankedResult` exports
+- `src/incident_agent/retrieval/__init__.py` — Added `CrossEncoderReranker` export
+- `src/incident_agent/agents/__init__.py` — Added `RerankerAgent` export
+- `src/incident_agent/__init__.py` — Added `RelevanceDelta`, `RerankedResult`, `RerankerAgent` exports
+
+### Verified
+- All 628 tests pass (50 Stage 11 + 578 existing)
+- `CrossEncoderReranker.rerank()` returns results sorted by descending cross-encoder score
+- `RerankerAgent.search()` produces a schema-valid `RerankedResult`
+- Cross-encoder scores query-document pairs jointly (not independently like RRF)
+- MRR and Precision@K computed correctly before and after reranking
+- `improvement_score` computed correctly as `@computed_field`
+- `RerankedResult.to_json()` → `from_json()` roundtrip works correctly
+- `RerankedResult.format_report()` produces human-readable before/after comparison
+- Cross-cutting rule verified: `RerankedResult` and `RelevanceDelta` are validated Pydantic objects
+- Backward compatible: `ReActAgent`, `OrchestratorAgent`, `IncidentCommander`, `DebateMechanism`, `TreeOfThoughtAgent`, `RootCauseAgent`, `ForensicExaminerAgent`, `RetrievalAgent` still work unchanged
+- `ruff check`, `ruff format`, `mypy`, `bandit` — all green
+
 ## [Stage 10] — 2026-09-27
 ### Added
 - `src/incident_agent/schemas/vector_search.py` — `SearchHit` and `HybridSearchResult` Pydantic models:

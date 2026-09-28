@@ -32,6 +32,16 @@ decisions behind this stage.
 - CLI `diagnose` subcommand
 - **220 tests passing**
 
+✅ **Stage 11 — Cross-Encoder Re-ranking** (complete)
+
+- `CrossEncoderReranker` re-ranks top-N candidates from hybrid retrieval using a cross-encoder that scores query-document pairs jointly
+- `RerankerAgent` produces validated `RerankedResult` with before/after comparison
+- MRR and Precision@K metrics quantify retrieval quality improvement
+- `improvement_score` measures net gain from cross-encoder reranking
+- `RelevanceDelta` tracks per-document relevance changes
+- ~628 tests passing (50+ Stage 11 + 578 existing)
+- See [`openspec/changes/011-reranking/proposal.md`](./openspec/changes/011-reranking/proposal.md) for the proposal
+
 ✅ **Stage 10 — Vector DB & Hybrid Retrieval** (complete)
 
 - `SearchHit` and `HybridSearchResult` Pydantic models for retrieval output
@@ -40,7 +50,7 @@ decisions behind this stage.
 - `rrf_rank()` and `HybridRetriever`: Reciprocal Rank Fusion of BM25 + Dense
 - `RetrievalAgent`: full hybrid search pipeline producing validated `HybridSearchResult`
 - `qdrant-client` dependency for vector storage (local/in-memory mode)
-- **~570 tests passing** (58+ Stage 10 + 519 existing)
+- **~578 tests passing** (58+ Stage 10 + 520 existing)
 - See [`openspec/changes/010-vector-db-hybrid-retrieval/proposal.md`](./openspec/changes/010-vector-db-hybrid-retrieval/proposal.md) for the proposal
 
 ✅ **Stage 9 — Tree-of-Thought + Plan-and-Solve** (complete)
@@ -159,6 +169,9 @@ Stage 7 added `agents/incident_commander.py` (IncidentCommander) and `schemas/co
 `agents/orchestrator.py` (OrchestratorAgent, OrchestrationState).
 Stage 10 added `retrieval/` (BM25, Dense, Hybrid, RRF) and `schemas/vector_search.py`
 (SearchHit, HybridSearchResult), plus `agents/retrieval_agent.py` (RetrievalAgent).
+Stage 11 added `retrieval/reranker.py` (CrossEncoderReranker) and
+`agents/reranker_agent.py` (RerankerAgent) with `schemas/reranking.py`
+(RelevanceDelta, RerankedResult) for cross-encoder re-ranking.
 
 ## Getting started
 
@@ -183,7 +196,7 @@ python eval/generate_gold_set_md.py  # Regenerate gold_set.md
 
 ### Run tests
 ```bash
-python -m pytest tests/ -v        # ~570 tests — all should pass
+python -m pytest tests/ -v        # ~628 tests — all should pass
 ```
 
 ### Verify the torch environment

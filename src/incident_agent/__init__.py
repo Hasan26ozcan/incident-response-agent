@@ -30,6 +30,10 @@ Stage 10: Vector DB & Hybrid Retrieval — BM25 + Dense retrieval
 with Reciprocal Rank Fusion (RRF). Knowledge-grounded incident
 retrieval for evidence-based diagnosis.
 
+Stage 11: Cross-encoder re-ranking — RerankerAgent re-ranks hybrid
+retrieval results using a cross-encoder that scores query-document
+pairs jointly. Includes before/after MRR and Precision@K metrics.
+
 See:
   - incident_agent.schemas — Pydantic output schemas (Stage 4)
   - incident_agent.prompts — Prompt library (Stage 4)
@@ -40,6 +44,7 @@ See:
   - incident_agent.workflows.plan — Diagnostic plan with replanning (Stage 5)
   - incident_agent.agents.tree_of_thought_agent — TreeOfThoughtAgent (Stage 9)
   - incident_agent.agents.retrieval_agent — RetrievalAgent (Stage 10)
+  - incident_agent.agents.reranker_agent — RerankerAgent (Stage 11)
 """
 
 __version__ = "0.1.0"
@@ -52,8 +57,9 @@ from incident_agent.agents.orchestrator import (
     OrchestratorAgent,
 )
 from incident_agent.agents.react_agent import Diagnosis, ReActAgent
-from incident_agent.agents.root_cause_agent import RootCauseAgent
+from incident_agent.agents.reranker_agent import RerankerAgent
 from incident_agent.agents.retrieval_agent import RetrievalAgent
+from incident_agent.agents.root_cause_agent import RootCauseAgent
 from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.agents.worker import (
     DeployHistoryWorker,
@@ -72,6 +78,8 @@ from incident_agent.schemas import (
     IncidentMetadata,
     MetricAnomaly,
     ReasoningStep,
+    RelevanceDelta,
+    RerankedResult,
     RiskTier,
     SearchHit,
     TreeOfThoughtResult,
@@ -110,5 +118,8 @@ __all__ = [
     "TreeOfThoughtResult",
     "SearchHit",
     "HybridSearchResult",
+    "RelevanceDelta",
+    "RerankedResult",
     "RetrievalAgent",
+    "RerankerAgent",
 ]
