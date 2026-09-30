@@ -1,6 +1,3 @@
-"""Retrieval and episodic memory.
+from incident_agent.memory.store import save_memory, load_memory, list_memories, retrieve_by_tag
 
-Populated starting Stage 10 (vector DB + hybrid BM25/dense/RRF retrieval),
-Stage 11 (reranking), and Stage 12 (episodic post-mortem memory and the
-self-improvement reflection loop). See ROADMAP.md Phase D.
-"""
+__all__ = ["save_memory", "load_memory", "list_memories", "retrieve_by_tag"]

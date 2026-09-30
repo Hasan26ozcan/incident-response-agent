@@ -36,6 +36,7 @@ from incident_agent.schemas.tree_of_thought import (
     Hypothesis,
     TreeOfThoughtResult,
 )
+from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
 from incident_agent.schemas.vector_search import (
     HybridSearchResult,
     SearchHit,
@@ -56,6 +57,9 @@ __all__ = [
     "ReasoningStep",
     "RelevanceDelta",
     "RerankedResult",
+    "MemoryRecord",
+    "PostMortem",
+    "ReflectionFeedback",
     "RiskTier",
     "SearchHit",
     "TreeOfThoughtResult",
