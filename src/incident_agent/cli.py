@@ -7,6 +7,7 @@ See ROADMAP.md Phase B for the single-agent ReAct skeleton spec.
 
 from __future__ import annotations
 
+import os
 import sys
 
 from incident_agent import __version__
@@ -33,13 +34,21 @@ def main(argv: list[str] | None = None) -> int:
 def _cmd_diagnose(args: list[str]) -> int:
     """Run the ReAct agent against a single incident."""
     if not args:
-        print("Usage: incident-agent diagnose <INC-ID>")
+        print("Usage: incident-agent diagnose <INC-ID> [--agent llm|legacy]")
         print("Example: incident-agent diagnose INC-001")
         return 1
 
     incident_id = args[0]
-    agent = ReActAgent(confidence_threshold=0.7)
-    diagnosis = agent.run(incident_id)
+    mode = "llm" if os.environ.get("GROQ_API_KEY") else "legacy"
+    if "--agent" in args:
+        mode = args[args.index("--agent") + 1]
+    if mode == "llm":
+        from incident_agent.agents.llm_react_agent import LLMReActAgent
+        from incident_agent.llm import build_client
+
+        diagnosis = LLMReActAgent(build_client()).run(incident_id)
+    else:
+        diagnosis = ReActAgent(confidence_threshold=0.7).run(incident_id)
     print(diagnosis.format_report())
     return 0
 

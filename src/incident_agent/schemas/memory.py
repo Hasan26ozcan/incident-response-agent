@@ -1,8 +1,8 @@
 """Episodic Memory schemas — Stage 12."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class PostMortem(BaseModel):
@@ -15,9 +15,9 @@ class PostMortem(BaseModel):
 
 
 class ReflectionFeedback(BaseModel):
-    misdiagnosis_type: Optional[str] = None
+    misdiagnosis_type: str | None = None
     confidence_delta: float = 0.0
-    updated_strategy: Optional[str] = None
+    updated_strategy: str | None = None
     correct: bool = True
 
 

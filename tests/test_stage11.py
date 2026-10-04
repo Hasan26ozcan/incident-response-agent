@@ -24,11 +24,8 @@ from incident_agent.agents.root_cause_agent import RootCauseAgent
 from incident_agent.agents.tree_of_thought_agent import TreeOfThoughtAgent
 from incident_agent.retrieval.reranker import CrossEncoderReranker
 from incident_agent.schemas import (
-    Diagnosis,
-    HybridSearchResult,
-    RerankedResult,
     RelevanceDelta,
-    SearchHit,
+    RerankedResult,
 )
 from incident_agent.schemas.agent_output import AgentOutput
 
@@ -464,7 +461,7 @@ class TestCrossCuttingAndCompatibility:
 
     def test_all_stage11_schemas_in_main_export(self):
         """New Stage 11 schemas should be importable from incident_agent."""
-        from incident_agent import RerankedResult, RerankerAgent, RelevanceDelta
+        from incident_agent import RelevanceDelta, RerankedResult, RerankerAgent
 
         assert RerankedResult is not None
         assert RerankerAgent is not None
@@ -552,7 +549,6 @@ class TestCrossCuttingAndCompatibility:
 
     def test_reranker_agent_uses_retrieval_agent(self):
         """RerankerAgent should use RetrievalAgent internally for hybrid results."""
-        from incident_agent.agents.retrieval_agent import RetrievalAgent
 
         docs = _sample_documents()
         agent = RerankerAgent()

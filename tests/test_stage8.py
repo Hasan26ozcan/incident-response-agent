@@ -35,7 +35,6 @@ from incident_agent.schemas import (
 )
 from incident_agent.schemas.agent_output import AgentOutput
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -483,8 +482,8 @@ class TestDebateOutcomeSchema:
                 root_cause_arguments=[],
                 forensic_challenges=[],
                 verdict="confirmed",
-            confidence=0.8,
-            false_positive_rate_before=0.2,
+                confidence=0.8,
+                false_positive_rate_before=0.2,
                 false_positive_rate_after=0.1,
                 confidence_adjustment=0.05,
                 final_diagnosis=diagnosis,
@@ -668,9 +667,7 @@ class TestFalsePositiveRateComparison:
         for confidence in [0.3, 0.5, 0.7, 0.9]:
             for evidence_count in [1, 3, 10]:
                 for challenge_count in [0, 2, 5]:
-                    fpr = mechanism.calculate_false_positive_rate(
-                        confidence, evidence_count, challenge_count
-                    )
+                    fpr = mechanism.calculate_false_positive_rate(confidence, evidence_count, challenge_count)
                     assert 0.0 <= fpr <= 1.0
 
     def test_fpr_decreases_with_confidence(self):

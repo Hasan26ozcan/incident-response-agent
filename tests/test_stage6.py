@@ -20,15 +20,15 @@ from pathlib import Path
 
 import pytest
 
-from incident_agent.agents.react_agent import ReActAgent
 from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
 )
+from incident_agent.agents.react_agent import ReActAgent
 from incident_agent.agents.worker import (
+    DeployHistoryWorker,
     LogWorker,
     MetricsWorker,
-    DeployHistoryWorker,
     WorkerAgent,
 )
 from incident_agent.schemas import (
@@ -178,10 +178,7 @@ class TestLogWorker:
         worker = LogWorker("INC-001")
         finding = worker.run()
         # INC-001 has error logs — evidence should contain log entries
-        log_evidence = [
-            e for e in finding.evidence
-            if e.source_type.value == "log_entry"
-        ]
+        [e for e in finding.evidence if e.source_type.value == "log_entry"]
         # At least some evidence should exist for a real incident
         assert len(finding.evidence) >= 0
 
@@ -222,10 +219,7 @@ class TestMetricsWorker:
     def test_metrics_worker_evidence(self):
         worker = MetricsWorker("INC-001")
         finding = worker.run()
-        metric_evidence = [
-            e for e in finding.evidence
-            if e.source_type.value == "metric_anomaly"
-        ]
+        [e for e in finding.evidence if e.source_type.value == "metric_anomaly"]
         # INC-001 may or may not have metric anomalies
         # The key is the finding is valid
         assert isinstance(finding.evidence, list)
@@ -258,10 +252,7 @@ class TestDeployHistoryWorker:
     def test_deploy_worker_evidence(self):
         worker = DeployHistoryWorker("INC-001")
         finding = worker.run()
-        deploy_evidence = [
-            e for e in finding.evidence
-            if e.source_type.value == "deploy"
-        ]
+        [e for e in finding.evidence if e.source_type.value == "deploy"]
         assert isinstance(finding.evidence, list)
 
     def test_deploy_worker_observable(self):
@@ -300,7 +291,7 @@ class TestOrchestratorDispatch:
         assert "deploy" in findings or "deploy" in agent.state.failed_workers
 
     def test_dispatch_completes_all_workers(self, agent):
-        findings = agent.dispatch_workers("INC-001")
+        agent.dispatch_workers("INC-001")
         # All workers should either succeed or fail
         total = len(agent.state.completed_workers) + len(agent.state.failed_workers)
         assert total == 3

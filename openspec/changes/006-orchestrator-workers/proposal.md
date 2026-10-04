@@ -113,6 +113,7 @@ class OrchestrationState(str, Enum):
     COMPLETED = "completed"
     SYNTHESIZED = "synthesized"
 
+
 class OrchestrationStatus(BaseModel):
     incident_id: str
     state: OrchestrationState

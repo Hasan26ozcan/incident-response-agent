@@ -1,0 +1,21 @@
+{
+  "post_mortem": {
+    "incident_id": "INC-013",
+    "root_cause": "db pool exhausted",
+    "resolution": "increase pool",
+    "timestamp": "2026-09-30T12:00:00Z",
+    "embedding_text": "db pool exhausted",
+    "tags": [
+      "db",
+      "pool"
+    ]
+  },
+  "reflection": {
+    "misdiagnosis_type": null,
+    "confidence_delta": 0.0,
+    "updated_strategy": null,
+    "correct": true
+  },
+  "accuracy_before": 0.0,
+  "accuracy_after": 0.0
+}

@@ -72,10 +72,7 @@ class CrossEncoderReranker:
         self._vocabulary = {token: idx for idx, token in enumerate(sorted(all_tokens))}
 
         # Compute IDF: log((N + 1) / (df + 1)) + 1
-        self._idf = {
-            token: math.log((self._doc_count + 1) / (df_val + 1)) + 1
-            for token, df_val in df.items()
-        }
+        self._idf = {token: math.log((self._doc_count + 1) / (df_val + 1)) + 1 for token, df_val in df.items()}
 
     def _compute_tfidf(self, text: str) -> np.ndarray:
         """Compute TF-IDF vector for a text."""
@@ -106,30 +103,20 @@ class CrossEncoderReranker:
             tokens = self._tokenize(documents[doc_id])
             doc_lengths[doc_id] = len(tokens)
 
-        avg_doc_length = (
-            sum(doc_lengths.values()) / len(doc_lengths) if doc_lengths else 1.0
-        )
+        avg_doc_length = sum(doc_lengths.values()) / len(doc_lengths) if doc_lengths else 1.0
         k1, b = 1.5, 0.75
         N = len(documents)
 
-        for query_token in {
-            token
-            for text in documents.values()
-            for token in self._tokenize(text)
-        }:
+        for query_token in {token for text in documents.values() for token in self._tokenize(text)}:
             if query_token not in self._vocabulary:
                 continue
-            df = sum(
-                1 for text in documents.values() if query_token in self._tokenize(text)
-            )
+            df = sum(1 for text in documents.values() if query_token in self._tokenize(text))
             idf = math.log((N - df + 0.5) / (df + 0.5) + 1)
 
             for doc_id, doc_len in doc_lengths.items():
                 tf_count = self._tokenize(documents[doc_id]).count(query_token)
                 if tf_count > 0:
-                    tf_component = (tf_count * (k1 + 1)) / (
-                        tf_count + k1 * (1 - b + b * doc_len / avg_doc_length)
-                    )
+                    tf_component = (tf_count * (k1 + 1)) / (tf_count + k1 * (1 - b + b * doc_len / avg_doc_length))
                     self._bm25_scores[doc_id] += idf * (tf_component + k1)
 
     def _build_tfidf_matrix(self, documents: dict[str, str]) -> None:
@@ -143,9 +130,7 @@ class CrossEncoderReranker:
             vec = self._compute_tfidf(documents[doc_id])
             vectors.append(vec)
 
-        self._tfidf_matrix = np.vstack(vectors) if vectors else np.zeros(
-            (0, len(self._vocabulary)), dtype=np.float64
-        )
+        self._tfidf_matrix = np.vstack(vectors) if vectors else np.zeros((0, len(self._vocabulary)), dtype=np.float64)
 
         # Normalize to unit length
         norms = np.linalg.norm(self._tfidf_matrix, axis=1, keepdims=True)
@@ -170,10 +155,12 @@ class CrossEncoderReranker:
         bm25_normalized = min(bm25_score / 10.0, 1.0) if bm25_score > 0 else 0.0
 
         # Concatenate: [interaction, dot_product, bm25_normalized]
-        features = np.concatenate([
-            interaction,
-            [dot_product, bm25_normalized],
-        ])
+        features = np.concatenate(
+            [
+                interaction,
+                [dot_product, bm25_normalized],
+            ]
+        )
         return features
 
     def _mlp_score(self, features: np.ndarray) -> float:
@@ -309,19 +296,13 @@ class CrossEncoderReranker:
 
         if not scores:
             # Fallback: return candidates with zero scores
-            results = [
-                (doc_id, 0.0, rank + 1)
-                for rank, doc_id in enumerate(candidate_ids[:top_k])
-            ]
+            results = [(doc_id, 0.0, rank + 1) for rank, doc_id in enumerate(candidate_ids[:top_k])]
             return results
 
         # Sort by descending score, then by doc_id for determinism
         sorted_scores = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
 
-        results = [
-            (doc_id, score, rank + 1)
-            for rank, (doc_id, score) in enumerate(sorted_scores[:top_k])
-        ]
+        results = [(doc_id, score, rank + 1) for rank, (doc_id, score) in enumerate(sorted_scores[:top_k])]
         return results
 
     def search(

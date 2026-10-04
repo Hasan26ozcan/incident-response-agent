@@ -92,17 +92,13 @@ class RerankerAgent:
         hybrid_result = retrieval_agent.search(query, incident_ids=incident_ids)
 
         # Step 2: Extract candidate IDs from hybrid fused rankings
-        candidate_ids = [
-            hit.incident_id for hit in hybrid_result.fused_rankings
-        ]
+        candidate_ids = [hit.incident_id for hit in hybrid_result.fused_rankings]
         if not candidate_ids:
             candidate_ids = list(self._documents.keys())
 
         # Step 3: Re-rank using cross-encoder
         rerank_start = time.monotonic()
-        reranked = self.reranker.rerank(
-            query, candidate_ids, self._documents, top_k=self.top_k_rerank
-        )
+        reranked = self.reranker.rerank(query, candidate_ids, self._documents, top_k=self.top_k_rerank)
         rerank_time_ms = (time.monotonic() - rerank_start) * 1000
 
         # Step 4: Build pre-rerank SearchHit list

@@ -3,13 +3,12 @@
 Writes post-mortems, embeds them via dense retrieval text,
 and allows retrieval by similarity + tag filter.
 """
+
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Optional
 
-from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
+from incident_agent.schemas.memory import MemoryRecord
 
 MEMORY_DIR = Path(__file__).resolve().parent / "store"
 
@@ -25,7 +24,7 @@ def save_memory(record: MemoryRecord) -> Path:
     return path
 
 
-def load_memory(incident_id: str) -> Optional[MemoryRecord]:
+def load_memory(incident_id: str) -> MemoryRecord | None:
     _ensure_dir()
     path = MEMORY_DIR / f"{incident_id}.json"
     if not path.exists():

@@ -85,17 +85,17 @@ This stage establishes the hierarchical swarm pattern that enables more sophisti
 ```python
 class CommanderDiagnosis(AgentOutput):
     incident_id: str
-    narrative: str          # Unified incident narrative
+    narrative: str  # Unified incident narrative
     escalation_decision: str  # "escalate", "monitor", or "resolve"
     severity_assessment: str  # Overall severity description
-    confidence: float        # Commander confidence (0.0-1.0)
-    risk_tier: RiskTier      # Inherited from diagnosis
-    diagnosis: Diagnosis     # The underlying orchestrator diagnosis
+    confidence: float  # Commander confidence (0.0-1.0)
+    risk_tier: RiskTier  # Inherited from diagnosis
+    diagnosis: Diagnosis  # The underlying orchestrator diagnosis
     worker_findings: list[WorkerFinding]  # All worker findings
-    evidence: list[EvidenceItem]          # Aggregated evidence
+    evidence: list[EvidenceItem]  # Aggregated evidence
     affected_service: str
     category: str
-    recommendation: str      # Commander-level recommendation
+    recommendation: str  # Commander-level recommendation
     reasoning_steps: list[ReasoningStep]  # Commander-level reasoning
 ```
 

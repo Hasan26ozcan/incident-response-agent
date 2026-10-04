@@ -107,11 +107,11 @@ Stage 11 introduces the **Cross-Encoder Re-ranker**: it takes the top-N candidat
 
 ```python
 class RelevanceDelta(BaseModel):
-    incident_id: str          # INC-XXX format
-    rrf_score: float          # Original RRF fused score
+    incident_id: str  # INC-XXX format
+    rrf_score: float  # Original RRF fused score
     cross_encoder_score: float  # Cross-encoder reranked score
-    delta: float              # cross_encoder_score - rrf_score
-    rank_change: int          # Change in rank (negative = improved)
+    delta: float  # cross_encoder_score - rrf_score
+    rank_change: int  # Change in rank (negative = improved)
 ```
 
 ### 4.2 RerankedResult
@@ -120,7 +120,7 @@ class RelevanceDelta(BaseModel):
 class RerankedResult(AgentOutput):
     query: str
     confidence: float
-    pre_rerank_rankings: list[SearchHit]   # RRF rankings before
+    pre_rerank_rankings: list[SearchHit]  # RRF rankings before
     post_rerank_rankings: list[SearchHit]  # Cross-encoder rankings after
     relevance_deltas: list[RelevanceDelta]
     mean_reciprocal_rank_before: float

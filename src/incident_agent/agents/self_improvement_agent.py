@@ -3,11 +3,12 @@
 Reflects on a resolved incident, writes a post-mortem,
 flags misdiagnoses, and updates strategy.
 """
+
 from __future__ import annotations
 
-from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
-from incident_agent.schemas.diagnosis import Diagnosis
 from incident_agent.memory import store
+from incident_agent.schemas.diagnosis import Diagnosis
+from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
 
 
 class SelfImprovementAgent:

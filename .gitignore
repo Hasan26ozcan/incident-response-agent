@@ -27,3 +27,4 @@ eval/results/
 # Coverage
 .coverage
 htmlcov/
+.llm_cache/

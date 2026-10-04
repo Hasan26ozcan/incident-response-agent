@@ -38,7 +38,6 @@ from incident_agent.schemas import (
 )
 from incident_agent.schemas.agent_output import AgentOutput
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

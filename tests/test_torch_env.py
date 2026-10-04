@@ -1,7 +1,9 @@
 """Verify the test environment has torch and numpy working correctly."""
 
 import numpy as np
-import torch
+import pytest
+
+torch = pytest.importorskip("torch", reason="optional [ml] extra")
 
 
 def test_torch_available():

@@ -20,14 +20,14 @@ import pytest
 from incident_agent.agents.incident_commander import IncidentCommander
 from incident_agent.agents.orchestrator import OrchestratorAgent
 from incident_agent.agents.react_agent import ReActAgent
-from incident_agent.schemas import CommanderDiagnosis, Diagnosis, WorkerFinding
+from incident_agent.schemas import CommanderDiagnosis, WorkerFinding
 from incident_agent.schemas.agent_output import EvidenceItem, EvidenceType, ReasoningStep
 from incident_agent.schemas.diagnosis import Diagnosis as DiagnosisSchema
-
 
 # ---------------------------------------------------------------------------
 # Helper fixtures
 # ---------------------------------------------------------------------------
+
 
 def _default_evidence() -> list[EvidenceItem]:
     return [
@@ -517,7 +517,8 @@ class TestIncidentCommanderEvidence:
         diagnosis = _make_diagnosis()
         findings = {
             "log": WorkerFinding(
-                worker_type="log", incident_id="INC-001",
+                worker_type="log",
+                incident_id="INC-001",
                 evidence=[
                     EvidenceItem(
                         source_type=EvidenceType.LOG_ENTRY,
@@ -582,14 +583,16 @@ class TestEndToEndOrchestratorToCommander:
         commander = IncidentCommander(confidence_threshold=0.7)
         findings = {
             "log": WorkerFinding(
-                worker_type="log", incident_id="INC-001",
+                worker_type="log",
+                incident_id="INC-001",
                 evidence=diagnosis.evidence[:1] if diagnosis.evidence else _default_evidence(),
                 reasoning_steps=diagnosis.reasoning_steps[:1] if diagnosis.reasoning_steps else _default_reasoning(),
                 confidence=diagnosis.confidence,
                 summary="Orchestrator log worker summary for testing that is long enough",
             ),
             "metrics": WorkerFinding(
-                worker_type="metrics", incident_id="INC-001",
+                worker_type="metrics",
+                incident_id="INC-001",
                 evidence=_default_evidence(),
                 reasoning_steps=_default_reasoning(),
                 confidence=diagnosis.confidence * 0.9,
@@ -607,7 +610,8 @@ class TestEndToEndOrchestratorToCommander:
         diagnosis = orchestrator.run("INC-001")
         findings = {
             "log": WorkerFinding(
-                worker_type="log", incident_id="INC-001",
+                worker_type="log",
+                incident_id="INC-001",
                 evidence=diagnosis.evidence[:1] if diagnosis.evidence else _default_evidence(),
                 reasoning_steps=diagnosis.reasoning_steps[:1] if diagnosis.reasoning_steps else _default_reasoning(),
                 confidence=diagnosis.confidence,
@@ -629,7 +633,8 @@ class TestEndToEndOrchestratorToCommander:
         commander = IncidentCommander(confidence_threshold=0.7)
         findings = {
             "log": WorkerFinding(
-                worker_type="log", incident_id="INC-002",
+                worker_type="log",
+                incident_id="INC-002",
                 evidence=diagnosis.evidence[:1] if diagnosis.evidence else _default_evidence(),
                 reasoning_steps=diagnosis.reasoning_steps[:1] if diagnosis.reasoning_steps else _default_reasoning(),
                 confidence=diagnosis.confidence,
@@ -675,9 +680,12 @@ class TestBackwardCompatibility:
         commander = IncidentCommander(confidence_threshold=0.7)
         findings = {
             "log": WorkerFinding(
-                worker_type="log", incident_id="INC-003",
+                worker_type="log",
+                incident_id="INC-003",
                 evidence=orch_diagnosis.evidence[:1] if orch_diagnosis.evidence else _default_evidence(),
-                reasoning_steps=orch_diagnosis.reasoning_steps[:1] if orch_diagnosis.reasoning_steps else _default_reasoning(),
+                reasoning_steps=orch_diagnosis.reasoning_steps[:1]
+                if orch_diagnosis.reasoning_steps
+                else _default_reasoning(),
                 confidence=orch_diagnosis.confidence,
                 summary="Test worker summary for testing that is long enough",
             ),

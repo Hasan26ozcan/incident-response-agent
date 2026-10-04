@@ -7,14 +7,14 @@ Covers:
   - Second encounter improvement: accuracy delta after strategy update.
   - Backward compatibility: prior agents unchanged.
 """
+
 from __future__ import annotations
 
-import pytest
-from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
-from incident_agent.schemas.diagnosis import Diagnosis
-from incident_agent.schemas.agent_output import EvidenceItem, EvidenceType, ReasoningStep, RiskTier, IncidentMetadata
 from incident_agent.agents.self_improvement_agent import SelfImprovementAgent
 from incident_agent.memory import store
+from incident_agent.schemas.agent_output import EvidenceType
+from incident_agent.schemas.diagnosis import Diagnosis
+from incident_agent.schemas.memory import MemoryRecord, PostMortem, ReflectionFeedback
 
 
 def test_memory_schema_validation() -> None:
@@ -51,7 +51,8 @@ def test_memory_store_roundtrip() -> None:
 
 
 def _diag(root_cause: str, confidence: float = 0.5) -> Diagnosis:
-    from incident_agent.schemas.diagnosis import Diagnosis, EvidenceItem, ReasoningStep, RiskTier, IncidentMetadata
+    from incident_agent.schemas.diagnosis import Diagnosis, EvidenceItem, ReasoningStep, RiskTier
+
     return Diagnosis(
         agent_type="test",
         incident_id="INC-999",
@@ -70,7 +71,9 @@ def _diag(root_cause: str, confidence: float = 0.5) -> Diagnosis:
 def test_self_improvement_reflects_misdiagnosis() -> None:
     agent = SelfImprovementAgent()
     diag = _diag("wrong_cause")
-    rec = agent.reflect_and_improve("INC-014", diag, gold_root_cause="cpu exhaustion long root cause", accuracy_before=0.4)
+    rec = agent.reflect_and_improve(
+        "INC-014", diag, gold_root_cause="cpu exhaustion long root cause", accuracy_before=0.4
+    )
     assert rec.reflection.correct is False
     assert rec.reflection.misdiagnosis_type is not None
     assert rec.reflection.updated_strategy is not None
@@ -83,19 +86,24 @@ def test_second_encounter_improvement() -> None:
     agent = SelfImprovementAgent()
     # First encounter wrong
     diag_wrong = _diag("memory leak pattern observed here")
-    rec1 = agent.reflect_and_improve("INC-015", diag_wrong, gold_root_cause="cpu exhaustion high load failure", accuracy_before=0.3)
+    rec1 = agent.reflect_and_improve(
+        "INC-015", diag_wrong, gold_root_cause="cpu exhaustion high load failure", accuracy_before=0.3
+    )
     assert rec1.accuracy_after < rec1.accuracy_before or rec1.reflection.correct is False
     # Second encounter correct with updated strategy
     diag_right = _diag("cpu exhaustion high load failure", confidence=0.9)
-    rec2 = agent.reflect_and_improve("INC-015B", diag_right, gold_root_cause="cpu exhaustion high load failure", accuracy_before=0.3)
+    rec2 = agent.reflect_and_improve(
+        "INC-015B", diag_right, gold_root_cause="cpu exhaustion high load failure", accuracy_before=0.3
+    )
     assert rec2.reflection.correct is True
     assert rec2.accuracy_after > rec1.accuracy_before
 
 
 def test_backward_compat_prior_agents() -> None:
+    from incident_agent.agents.debate_mechanism import DebateMechanism
     from incident_agent.agents.react_agent import ReActAgent
     from incident_agent.agents.reranker_agent import RerankerAgent
-    from incident_agent.agents.debate_mechanism import DebateMechanism
+
     assert ReActAgent is not None
     assert RerankerAgent is not None
     assert DebateMechanism is not None

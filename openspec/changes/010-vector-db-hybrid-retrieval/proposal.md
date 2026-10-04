@@ -111,11 +111,11 @@ This is particularly important for complex incidents where historical patterns p
 
 ```python
 class SearchHit(BaseModel):
-    incident_id: str          # INC-XXX format
-    score: float              # Relevance score (>= 0.0)
-    ranker_source: str        # "bm25", "dense", or "rrf"
-    rank: int                 # 1-based rank position
-    metadata: dict            # Additional result metadata
+    incident_id: str  # INC-XXX format
+    score: float  # Relevance score (>= 0.0)
+    ranker_source: str  # "bm25", "dense", or "rrf"
+    rank: int  # 1-based rank position
+    metadata: dict  # Additional result metadata
 ```
 
 ### 4.2 HybridSearchResult

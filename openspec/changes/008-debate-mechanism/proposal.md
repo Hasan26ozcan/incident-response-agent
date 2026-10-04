@@ -89,10 +89,10 @@ This stage establishes the adversarial analysis pattern that improves diagnostic
 
 ```python
 class Argument(BaseModel):
-    agent: str                    # "root_cause" or "forensic_examiner"
-    point: str                    # The argument point (min 5 chars)
-    evidence_refs: list[str]      # Supporting evidence references
-    confidence: float             # Confidence in this argument (0.0-1.0)
+    agent: str  # "root_cause" or "forensic_examiner"
+    point: str  # The argument point (min 5 chars)
+    evidence_refs: list[str]  # Supporting evidence references
+    confidence: float  # Confidence in this argument (0.0-1.0)
 ```
 
 ### 4.2 DebateOutcome
@@ -103,7 +103,7 @@ class DebateOutcome(AgentOutput):
     original_diagnosis: Diagnosis
     root_cause_arguments: list[Argument]
     forensic_challenges: list[Argument]
-    verdict: str                  # "confirmed", "challenged", or "revised"
+    verdict: str  # "confirmed", "challenged", or "revised"
     false_positive_rate_before: float
     false_positive_rate_after: float
     confidence_adjustment: float

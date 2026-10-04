@@ -8,13 +8,17 @@ version = "0.1.0"
 description = "Agentic incident response system — 23-stage portfolio project"
 requires-python = ">=3.11"
 dependencies = [
-    "torch>=2.0",
     "numpy>=1.24",
     "pydantic>=2.0",
-    "qdrant-client>=1.9",
+    "openai>=1.50",  # OpenAI-compatible client: Groq, Cerebras, Gemini endpoints
 ]
 
 [project.optional-dependencies]
+ml = [
+    "torch>=2.0",
+    "sentence-transformers>=3.0",
+    "qdrant-client>=1.9",
+]
 dev = [
     "ruff>=0.6",
     "bandit>=1.9",
@@ -47,6 +51,7 @@ ignore = [
 "src/incident_agent/prompts/few_shot.py" = ["E501"]
 
 [tool.mypy]
+files = ["src"]
 python_version = "3.11"
 ignore_missing_imports = true
 warn_return_any = false

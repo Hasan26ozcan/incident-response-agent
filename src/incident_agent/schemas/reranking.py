@@ -93,9 +93,7 @@ class RerankedResult(AgentOutput):
     @property
     def improvement_score(self) -> float:
         """Net improvement: (MRR_after + P@K_after) - (MRR_before + P@K_before)."""
-        return (
-            self.mean_reciprocal_rank_after + self.precision_at_k_after
-        ) - (
+        return (self.mean_reciprocal_rank_after + self.precision_at_k_after) - (
             self.mean_reciprocal_rank_before + self.precision_at_k_before
         )
 
