@@ -185,7 +185,21 @@ python -m venv .venv
 .\.venv\Scripts\activate          # Windows
 # source .venv/bin/activate       # macOS/Linux
 pip install -r requirements.txt
+pip install -e .
 ```
+
+### Run a diagnosis
+```powershell
+Copy-Item .env.example .env
+# Set GROQ_API_KEY in .env, then:
+incident-agent diagnose INC-001
+# Or run without the installed console script:
+python -m incident_agent diagnose INC-001
+```
+
+The CLI uses the LLM agent when `GROQ_API_KEY` is set in the environment or
+`.env`; otherwise it uses the legacy rule-based agent. Pass `--agent llm` to
+require the LLM agent explicitly.
 
 ### Regenerate the dataset
 ```bash

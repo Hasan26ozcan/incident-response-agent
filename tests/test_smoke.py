@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tomllib
+from pathlib import Path
 
 import pytest
 
@@ -38,6 +40,25 @@ def test_console_script_installed() -> None:
     """Confirms `pip install -e .` actually registered the entry point."""
     result = subprocess.run(
         [sys.executable, "-m", "incident_agent.cli"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert "incident-agent" in result.stdout
+
+
+def test_console_script_declared_in_project_metadata() -> None:
+    project_file = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    with project_file.open("rb") as file:
+        project = tomllib.load(file)
+    assert project["project"]["scripts"]["incident-agent"] == "incident_agent.cli:main"
+
+
+def test_package_module_entry_point() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "incident_agent"],
         capture_output=True,
         text=True,
         check=False,

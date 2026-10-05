@@ -114,9 +114,9 @@ def score_one(gold: dict, result: DiagnosisResult) -> IncidentScore:
     )
 
 
-def evaluate(diagnose: Callable[[str], DiagnosisResult], gold_dir: Path = GOLD_DIR) -> dict:
+def evaluate(diagnose: Callable[[str], DiagnosisResult], gold_dir: Path = GOLD_DIR, limit: int | None = None) -> dict:
     scores: list[IncidentScore] = []
-    for path in sorted(gold_dir.glob("INC-*.json")):
+    for path in sorted(gold_dir.glob("INC-*.json"))[:limit]:
         gold = json.loads(path.read_text())
         try:
             res = diagnose(gold["incident_id"])
@@ -177,11 +177,14 @@ ADAPTERS: dict[str, Callable[[str], DiagnosisResult]] = {"react_baseline": react
 def main() -> None:
     ap = argparse.ArgumentParser(description="Score a diagnoser against the gold set")
     ap.add_argument("--agent", default="react_baseline", choices=sorted(ADAPTERS))
+    ap.add_argument("--limit", type=int, default=None, help="score only the first N incidents (saves quota)")
     args = ap.parse_args()
-    report = evaluate(ADAPTERS[args.agent])
+    report = evaluate(ADAPTERS[args.agent], limit=args.limit)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / f"{args.agent}.json"
     out.write_text(json.dumps(report, indent=2))
+    for r in report["incidents"]:
+        print(f"{r['incident_id']} {r['category']:<22} f1={r['root_cause_f1']:.2f} risk={r['risk_match']}")
     print(json.dumps(report["summary"], indent=2))
     print(f"saved -> {out}")
 

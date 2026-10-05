@@ -12,6 +12,7 @@ import sys
 
 from incident_agent import __version__
 from incident_agent.agents.react_agent import ReActAgent
+from incident_agent.llm.client import LLMUnavailable, _load_dotenv
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,6 +39,7 @@ def _cmd_diagnose(args: list[str]) -> int:
         print("Example: incident-agent diagnose INC-001")
         return 1
 
+    _load_dotenv()
     incident_id = args[0]
     mode = "llm" if os.environ.get("GROQ_API_KEY") else "legacy"
     if "--agent" in args:
@@ -46,7 +48,11 @@ def _cmd_diagnose(args: list[str]) -> int:
         from incident_agent.agents.llm_react_agent import LLMReActAgent
         from incident_agent.llm import build_client
 
-        diagnosis = LLMReActAgent(build_client()).run(incident_id)
+        try:
+            diagnosis = LLMReActAgent(build_client()).run(incident_id)
+        except LLMUnavailable as exc:
+            print(f"LLM unavailable: {exc}", file=sys.stderr)
+            return 1
     else:
         diagnosis = ReActAgent(confidence_threshold=0.7).run(incident_id)
     print(diagnosis.format_report())

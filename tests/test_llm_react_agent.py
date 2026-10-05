@@ -160,3 +160,34 @@ def test_cache_hits_skip_the_provider(tmp_path):
     assert cached.chat(msgs).content == "hi"
     assert cached.chat(msgs).content == "hi"  # would raise AssertionError if it reached the exhausted fake
     assert (cached.hits, cached.misses) == (1, 1)
+
+
+def test_dotenv_loader_sets_missing_but_never_overrides(tmp_path, monkeypatch):
+    from incident_agent.llm.client import _load_dotenv
+
+    f = tmp_path / ".env"
+    f.write_text('# c\nNEW_VAR_X="abc"\nKEEP_VAR_X=from_file\n')
+    monkeypatch.delenv("NEW_VAR_X", raising=False)
+    monkeypatch.setenv("KEEP_VAR_X", "from_env")
+    _load_dotenv(f)
+    import os
+
+    assert os.environ["NEW_VAR_X"] == "abc" and os.environ["KEEP_VAR_X"] == "from_env"
+    monkeypatch.delenv("NEW_VAR_X")
+
+
+def test_dotenv_handles_windows_bom_crlf_export_and_empty_values(tmp_path, monkeypatch):
+    from incident_agent.llm.client import _load_dotenv
+
+    f = tmp_path / ".env"
+    f.write_bytes(b"\xef\xbb\xbfBOM_VAR_X=secret123\r\nEMPTY_VAR_X=\r\nexport EXP_VAR_X='q'\r\n")
+    for key in ("BOM_VAR_X", "EMPTY_VAR_X", "EXP_VAR_X"):
+        monkeypatch.delenv(key, raising=False)
+
+    _load_dotenv(f)
+
+    import os
+
+    assert os.environ["BOM_VAR_X"] == "secret123"
+    assert os.environ["EXP_VAR_X"] == "q"
+    assert "EMPTY_VAR_X" not in os.environ

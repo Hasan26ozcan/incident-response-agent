@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 from pydantic import BaseModel
@@ -143,6 +144,29 @@ class FallbackClient:
         raise LLMUnavailable(f"all providers unavailable: {last}")
 
 
+def _dotenv_candidates() -> list[Path]:
+    """Find .env in the current directory or the repository root."""
+    candidates = [Path.cwd() / ".env", Path(__file__).resolve().parents[3] / ".env"]
+    return list(dict.fromkeys(candidates))
+
+
+def _load_dotenv(path: Path | None = None) -> None:
+    """Load non-empty KEY=VALUE lines without overriding existing variables."""
+    env_files = [path] if path is not None else _dotenv_candidates()
+    for env_file in env_files:
+        if not env_file.is_file():
+            continue
+        for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+            line = line.strip().removeprefix("export ").strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip("\"'")
+            if key and value:
+                os.environ.setdefault(key, value)
+
+
 def build_client(cache_dir: str | None = None) -> LLMClient:
     """Build the default client from environment variables.
 
@@ -152,12 +176,18 @@ def build_client(cache_dir: str | None = None) -> LLMClient:
     """
     from incident_agent.llm.cache import CachedClient
 
+    _load_dotenv()
     clients: list[LLMClient] = []
     if key := os.environ.get("GROQ_API_KEY"):
         clients.append(OpenAICompatClient(os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"), key, GROQ_BASE_URL))
     if (key := os.environ.get("CEREBRAS_API_KEY")) and (model := os.environ.get("CEREBRAS_MODEL")):
         clients.append(OpenAICompatClient(model, key, CEREBRAS_BASE_URL))
     if not clients:
-        raise LLMUnavailable("set GROQ_API_KEY (and optionally CEREBRAS_API_KEY + CEREBRAS_MODEL)")
+        searched = ", ".join(str(path) for path in _dotenv_candidates())
+        raise LLMUnavailable(
+            "GROQ_API_KEY not found. Add GROQ_API_KEY=your_key to .env or set it in the environment. "
+            f"Looked for .env in: {searched}. Check that the file is named exactly .env (not .env.txt) "
+            "and the key value is not empty."
+        )
     inner: LLMClient = clients[0] if len(clients) == 1 else FallbackClient(clients)
     return CachedClient(inner, cache_dir or os.environ.get("LLM_CACHE_DIR", ".llm_cache"))
