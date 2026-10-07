@@ -25,7 +25,7 @@ class ScriptedClient:
         response_schema: type[BaseModel] | None = None,
         temperature: float = 0.0,
     ) -> LLMResponse:
-        self.calls.append({"messages": messages, "tools": tools, "schema": response_schema})
+        self.calls.append({"messages": messages, "tools": tools, "schema": response_schema, "temperature": temperature})
         if not self._responses:
             raise AssertionError("ScriptedClient exhausted: agent made more LLM calls than scripted")
         return self._responses.pop(0)

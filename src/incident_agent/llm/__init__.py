@@ -12,6 +12,7 @@ from incident_agent.llm.client import (
 )
 from incident_agent.llm.scripted import ScriptedClient
 from incident_agent.llm.structured import StructuredOutputError, generate_structured
+from incident_agent.llm.usage import TrackingClient
 
 __all__ = [
     "CachedClient",
@@ -23,6 +24,7 @@ __all__ = [
     "ScriptedClient",
     "StructuredOutputError",
     "ToolCall",
+    "TrackingClient",
     "build_client",
     "generate_structured",
 ]

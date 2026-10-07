@@ -1,0 +1,5 @@
+{
+  "_note": "Frozen dev/test split (stratified by category/difficulty). Tune ONLY on dev. Open test only at milestones; every open is logged in eval/test_openings.log. Do not edit after first commit.",
+  "dev":  ["INC-001", "INC-002", "INC-003", "INC-005", "INC-007", "INC-008", "INC-010", "INC-012", "INC-015", "INC-019"],
+  "test": ["INC-004", "INC-006", "INC-009", "INC-011", "INC-013", "INC-014", "INC-016", "INC-017", "INC-018", "INC-020"]
+}

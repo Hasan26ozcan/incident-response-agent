@@ -27,3 +27,12 @@ def test_legacy_react_baseline_is_weak():
     """Documents the honest baseline the LLM agent must beat."""
     s = evaluate(react_baseline)["summary"]
     assert s["answered_rate"] <= 0.3
+
+
+def test_crashes_are_reported_not_hidden():
+    def boom(iid: str) -> DiagnosisResult:
+        raise RuntimeError("provider exploded")
+
+    rep = evaluate(boom, limit=2)
+    assert rep["summary"]["crashed"] == 2
+    assert "provider exploded" in rep["incidents"][0]["error"]

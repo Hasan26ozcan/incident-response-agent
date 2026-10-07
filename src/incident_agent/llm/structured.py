@@ -28,12 +28,13 @@ def generate_structured(
     schema: type[T],
     *,
     max_repairs: int = 2,
+    temperature: float = 0.0,
 ) -> T:
     """Call the model with a JSON schema; on invalid output, feed the error back and retry."""
     msgs = list(messages)
     last_error = ""
     for _ in range(max_repairs + 1):
-        resp = client.chat(msgs, response_schema=schema)
+        resp = client.chat(msgs, response_schema=schema, temperature=temperature)
         raw = resp.content or ""
         try:
             return schema.model_validate_json(_strip_fences(raw))

@@ -65,12 +65,14 @@ class LLMReActAgent:
         max_replans: int = 2,
         max_repairs: int = 2,
         fail_tools: set[str] | None = None,
+        temperature: float = 0.0,
     ) -> None:
         self.client = client
         self.max_steps = max_steps
         self.max_replans = max_replans
         self.max_repairs = max_repairs
         self.fail_tools = fail_tools or set()
+        self.temperature = temperature
         self.plan_history: list[LLMPlan] = []
         self.unavailable: set[str] = set()
         self.transcript: list[str] = []
@@ -82,7 +84,9 @@ class LLMReActAgent:
             {"role": "system", "content": P.PLAN_SYSTEM.format(tools=", ".join(available))},
             {"role": "user", "content": extra_user or f"Plan the investigation of incident {incident_id}."},
         ]
-        plan = generate_structured(self.client, messages, LLMPlan, max_repairs=self.max_repairs)
+        plan = generate_structured(
+            self.client, messages, LLMPlan, max_repairs=self.max_repairs, temperature=self.temperature
+        )
         plan.steps = [s for s in plan.steps if s.tool in available] or plan.steps[:1]
         self.plan_history.append(plan)
         return plan
@@ -109,7 +113,7 @@ class LLMReActAgent:
         replans = 0
         for _ in range(self.max_steps):
             tools = [t for t in TOOL_SPECS if t["function"]["name"] not in self.unavailable]
-            resp = self.client.chat(messages, tools=tools)
+            resp = self.client.chat(messages, tools=tools, temperature=self.temperature)
             if not resp.tool_calls:
                 break
             messages.append(
@@ -156,7 +160,9 @@ class LLMReActAgent:
                 ),
             },
         ]
-        out = generate_structured(self.client, messages, LLMDiagnosis, max_repairs=self.max_repairs)
+        out = generate_structured(
+            self.client, messages, LLMDiagnosis, max_repairs=self.max_repairs, temperature=self.temperature
+        )
         return self._to_diagnosis(incident_id, out, joined)
 
     def _to_diagnosis(self, incident_id: str, out: LLMDiagnosis, transcript: str) -> Diagnosis:
