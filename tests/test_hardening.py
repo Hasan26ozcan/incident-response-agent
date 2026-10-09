@@ -5,10 +5,10 @@ Everything here is offline: a scripted/fake LLM for the agent and httpx.MockTran
 
 from __future__ import annotations
 
+import importlib
 import json
 from typing import Any
 
-import httpx
 import pytest
 from pydantic import BaseModel
 
@@ -25,6 +25,11 @@ from incident_agent.llm import (
 from incident_agent.llm.schema import flatten_schema
 from incident_agent.schemas.agent_output import RiskTier
 from incident_agent.tools.toolbox import IncidentToolbox, ToolError
+
+try:  # openai>=3 ships on httpx2; older openai uses httpx. Mock with whichever the installed SDK uses.
+    httpx: Any = importlib.import_module("httpx2")
+except ModuleNotFoundError:
+    httpx = importlib.import_module("httpx")
 
 PLAN = {"hypotheses": ["bad deploy"], "steps": [{"tool": "log_overview", "purpose": "error mix"}]}
 FINAL = {

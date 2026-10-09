@@ -18,6 +18,11 @@ FROM python:3.11-slim
 RUN groupadd --gid 1000 sandbox \
     && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash sandbox
 
+# The base image ships setuptools/wheel with vendored copies of jaraco.context and wheel that carry
+# known HIGH CVEs (CVE-2026-23949, CVE-2026-24049). The sandbox never builds packages, so remove them
+# instead of chasing versions (smaller attack surface, and the Trivy gate stays meaningful).
+RUN pip uninstall -y setuptools wheel
+
 WORKDIR /home/sandbox
 
 # Minimal, predictable base — no extra packages installed here. Later
