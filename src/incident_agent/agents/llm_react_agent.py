@@ -14,10 +14,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from incident_agent.llm import LLMClient, generate_structured
+from incident_agent.llm import LLMClient, LLMUnavailable, StructuredOutputError, generate_structured
 from incident_agent.prompts import agent_prompts as P
 from incident_agent.schemas.agent_output import EvidenceItem, EvidenceType, ReasoningStep, RiskTier
 from incident_agent.schemas.diagnosis import Diagnosis
+from incident_agent.tools import read_meta
 from incident_agent.tools.toolbox import TOOL_NAMES, TOOL_SPECS, IncidentToolbox, ToolError
 
 
@@ -50,6 +51,18 @@ class LLMDiagnosis(BaseModel):
     risk_tier: RiskTier
 
 
+def _wrap_output(text: str) -> str:
+    """Mark tool output as untrusted data; neutralise a forged closing tag inside it."""
+    return "<tool_output>\n" + text.replace("</tool_output>", "[/tool_output]") + "\n</tool_output>"
+
+
+def _default_plan() -> LLMPlan:
+    return LLMPlan(
+        hypotheses=["unknown: sweep all read-only sources"],
+        steps=[PlanStepSpec(tool=t, purpose="default sweep (planner unavailable)") for t in TOOL_NAMES],
+    )
+
+
 def _tokens(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9_.\-]{3,}", text.lower()))
 
@@ -66,6 +79,9 @@ class LLMReActAgent:
         max_repairs: int = 2,
         fail_tools: set[str] | None = None,
         temperature: float = 0.0,
+        max_tool_calls: int = 12,
+        max_bad_calls: int = 4,
+        max_duplicates: int = 3,
     ) -> None:
         self.client = client
         self.max_steps = max_steps
@@ -73,6 +89,10 @@ class LLMReActAgent:
         self.max_repairs = max_repairs
         self.fail_tools = fail_tools or set()
         self.temperature = temperature
+        self.max_tool_calls = max_tool_calls
+        self.max_bad_calls = max_bad_calls
+        self.max_duplicates = max_duplicates
+        self.degraded: str | None = None  # set when the run could not finish normally
         self.plan_history: list[LLMPlan] = []
         self.unavailable: set[str] = set()
         self.transcript: list[str] = []
@@ -101,8 +121,13 @@ class LLMReActAgent:
     # -- main loop (Stage 3) --------------------------------------------------
     def run(self, incident_id: str) -> Diagnosis:
         toolbox = IncidentToolbox(incident_id, fail_tools=self.fail_tools)
-        self.plan_history, self.unavailable, self.transcript = [], set(), []
-        plan = self._plan(incident_id)
+        self.plan_history, self.unavailable, self.transcript, self.degraded = [], set(), [], None
+        try:
+            plan = self._plan(incident_id)
+        except (LLMUnavailable, StructuredOutputError) as exc:
+            self.transcript.append(f"[planner failed, using default plan: {type(exc).__name__}]")
+            plan = _default_plan()
+            self.plan_history.append(plan)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": P.SYSTEM},
             {
@@ -110,12 +135,21 @@ class LLMReActAgent:
                 "content": P.INVESTIGATE_USER.format(incident_id=incident_id, plan=plan.model_dump_json()),
             },
         ]
-        replans = 0
+        try:
+            self._investigate(incident_id, toolbox, messages)
+        except LLMUnavailable as exc:
+            self.degraded = f"investigation interrupted: {exc}"
+            self.transcript.append("[investigation interrupted: provider unavailable]")
+        return self._finalize(incident_id)
+
+    def _investigate(self, incident_id: str, toolbox: IncidentToolbox, messages: list[dict[str, Any]]) -> None:
+        replans = executed = bad_calls = duplicates = 0
+        seen: set[str] = set()
         for _ in range(self.max_steps):
             tools = [t for t in TOOL_SPECS if t["function"]["name"] not in self.unavailable]
             resp = self.client.chat(messages, tools=tools, temperature=self.temperature)
             if not resp.tool_calls:
-                break
+                return
             messages.append(
                 {
                     "role": "assistant",
@@ -130,21 +164,44 @@ class LLMReActAgent:
                     ],
                 }
             )
-            for call in resp.tool_calls:
-                try:
-                    result = toolbox.call(call.name, call.arguments)
-                except ToolError as failure:
-                    result = f"ERROR {failure}"
-                    if failure.tool in TOOL_NAMES:
-                        if replans < self.max_replans:
-                            replans += 1
-                            plan = self._replan(incident_id, failure)  # withdraws the failed tool
-                            result += f"\nREPLAN: {plan.model_dump_json()}"
-                        else:
-                            self.unavailable.add(failure.tool)
+            stop: str | None = None
+            for call in resp.tool_calls:  # every call id must get an answer to keep the protocol valid
+                key = f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}"
+                if stop is not None:
+                    result = f"SKIPPED: investigation is being stopped ({stop}). Conclude with what you have."
+                elif executed >= self.max_tool_calls:
+                    stop = "tool-call budget exhausted"
+                    result = "BUDGET: tool-call budget exhausted. Conclude with the evidence you have."
+                elif key in seen:
+                    duplicates += 1
+                    result = (
+                        "DUPLICATE: this exact call was already made (result above). Try something new or conclude."
+                    )
+                    if duplicates >= self.max_duplicates:
+                        stop = "repeated identical calls"
+                else:
+                    seen.add(key)
+                    executed += 1
+                    try:
+                        result = _wrap_output(toolbox.call(call.name, call.arguments))
+                    except ToolError as failure:
+                        result = f"ERROR {failure}"
+                        if failure.bad_args:  # the model's mistake: let it correct the call, keep the tool
+                            bad_calls += 1
+                            if bad_calls >= self.max_bad_calls:
+                                stop = "too many malformed tool calls"
+                        elif failure.tool in TOOL_NAMES:
+                            if replans < self.max_replans:
+                                replans += 1
+                                plan = self._replan(incident_id, failure)  # withdraws the failed tool
+                                result += f"\nREPLAN: {plan.model_dump_json()}"
+                            else:
+                                self.unavailable.add(failure.tool)
                 self.transcript.append(f"> {call.name}({json.dumps(call.arguments)})\n{result}")
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
-        return self._finalize(incident_id)
+            if stop is not None:
+                self.transcript.append(f"[investigation stopped: {stop}]")
+                return
 
     # -- final structured answer (Stage 4) -----------------------------------
     def _finalize(self, incident_id: str) -> Diagnosis:
@@ -160,10 +217,42 @@ class LLMReActAgent:
                 ),
             },
         ]
-        out = generate_structured(
-            self.client, messages, LLMDiagnosis, max_repairs=self.max_repairs, temperature=self.temperature
-        )
+        try:
+            out = generate_structured(
+                self.client, messages, LLMDiagnosis, max_repairs=self.max_repairs, temperature=self.temperature
+            )
+        except (LLMUnavailable, StructuredOutputError) as exc:
+            reason = f"final diagnosis failed ({type(exc).__name__}): {str(exc)[:200]}"
+            self.degraded = f"{self.degraded}; {reason}" if self.degraded else reason
+            return self._degraded_diagnosis(incident_id, joined)
         return self._to_diagnosis(incident_id, out, joined)
+
+    def _degraded_diagnosis(self, incident_id: str, transcript: str) -> Diagnosis:
+        """Valid, clearly-flagged, zero-confidence result so one outage never loses the whole incident."""
+        try:
+            service = str(read_meta(incident_id)["services"][0])
+        except (OSError, KeyError, IndexError, ValueError):
+            service = "unknown"
+        calls = sum(1 for line in self.transcript if line.startswith("> "))
+        return Diagnosis(
+            agent_type=self.agent_type,
+            incident_id=incident_id,
+            root_cause=f"Unknown (degraded run): no reliable root cause; {calls} tool call(s) completed.",
+            confidence=0.0,
+            evidence=[
+                EvidenceItem(
+                    source_type=EvidenceType.META,
+                    source="agent_transcript",
+                    detail=transcript[:300],
+                    confidence_weight=0.0,
+                )
+            ],
+            affected_service=service,
+            category="undetermined",
+            reasoning_steps=[ReasoningStep(step_number=1, description=f"Degraded: {self.degraded}")],
+            recommendation="Escalate to a human on-call engineer; automated diagnosis did not complete.",
+            risk_tier=RiskTier.HIGH,
+        )
 
     def _to_diagnosis(self, incident_id: str, out: LLMDiagnosis, transcript: str) -> Diagnosis:
         seen = _tokens(transcript)

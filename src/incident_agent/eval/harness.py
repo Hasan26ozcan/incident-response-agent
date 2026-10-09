@@ -65,6 +65,7 @@ class DiagnosisResult:
     error: str = ""  # set by an adapter that caught a crash but still has a partial trace
     trace: dict[str, Any] = field(default_factory=dict)
     usage: dict[str, int] = field(default_factory=dict)
+    degraded: str = ""  # non-empty when the agent returned a flagged fallback instead of a real diagnosis
 
 
 @dataclass
@@ -79,6 +80,7 @@ class IncidentScore:
     answered: bool  # produced any root cause other than "Unknown"
     error: str = ""  # non-empty when the agent crashed on this incident
     usage: dict[str, int] = field(default_factory=dict)
+    degraded: str = ""
 
 
 def _tokens(text: str) -> set[str]:
@@ -123,6 +125,7 @@ def score_one(gold: dict, result: DiagnosisResult, error: str = "") -> IncidentS
         answered=not result.root_cause.lower().startswith("unknown"),
         error=error or result.error,
         usage=result.usage,
+        degraded=result.degraded,
     )
 
 
@@ -136,6 +139,7 @@ def summarize(scores: list[IncidentScore]) -> dict[str, Any]:
         "false_alarm_accuracy": round(sum(s.false_alarm_ok for s in scores) / n, 3),
         "answered_rate": round(sum(s.answered for s in scores) / n, 3),
         "crashed": sum(bool(s.error) for s in scores),
+        "degraded": sum(bool(s.degraded) for s in scores),
         "llm_calls": sum(s.usage.get("calls", 0) for s in scores),
         "prompt_tokens": sum(s.usage.get("prompt_tokens", 0) for s in scores),
         "completion_tokens": sum(s.usage.get("completion_tokens", 0) for s in scores),
@@ -234,6 +238,7 @@ def make_llm_react(temperature: float = 0.0) -> Callable[[str], DiagnosisResult]
             steps=len(d.reasoning_steps),
             trace=trace,
             usage=client.summary(),
+            degraded=agent.degraded or "",
         )
 
     return run
@@ -245,6 +250,7 @@ def _agent_trace(agent: Any) -> dict[str, Any]:
         "plan_history": [p.model_dump() for p in agent.plan_history],
         "transcript": list(agent.transcript),
         "unavailable_tools": sorted(agent.unavailable),
+        "degraded": getattr(agent, "degraded", None),
     }
 
 

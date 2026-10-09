@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from incident_agent.tools import PROJECT_ROOT, read_deploys, read_logs, read_meta, read_metrics
 
@@ -17,12 +19,57 @@ _ID = re.compile(r"^INC-\d{3}$")
 
 
 class ToolError(Exception):
-    """A tool could not produce a usable result (unknown tool, bad args, source down)."""
+    """A tool could not produce a usable result (unknown tool, bad args, source down).
 
-    def __init__(self, tool: str, reason: str) -> None:
+    ``bad_args`` marks a mistake by the caller (the tool itself is fine): the agent shows the message
+    to the model so it can correct the call, instead of withdrawing the tool and replanning.
+    """
+
+    def __init__(self, tool: str, reason: str, *, bad_args: bool = False) -> None:
         super().__init__(f"{tool}: {reason}")
         self.tool = tool
         self.reason = reason
+        self.bad_args = bad_args
+
+
+class _NoArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class _SearchLogsArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1, max_length=200)
+    level: Literal["ERROR", "WARN", "INFO", "DEBUG", "ANY"] = "ANY"
+    limit: int = Field(default=15, ge=1, le=25)
+
+    @field_validator("level", "limit", mode="before")
+    @classmethod
+    def _none_means_default(cls, v: Any, info: Any) -> Any:
+        if v is None:
+            return "ANY" if info.field_name == "level" else 15
+        if info.field_name == "level" and isinstance(v, str):
+            return v.upper()
+        if info.field_name == "limit" and isinstance(v, int) and not isinstance(v, bool):
+            return max(1, min(v, 25))  # an over-large limit is clamped, not an error
+        return v
+
+
+_ARG_MODELS: dict[str, type[BaseModel]] = {
+    "get_incident_meta": _NoArgs,
+    "log_overview": _NoArgs,
+    "search_logs": _SearchLogsArgs,
+    "get_metric_summary": _NoArgs,
+    "get_recent_deploys": _NoArgs,
+}
+
+
+def _describe(exc: ValidationError) -> str:
+    parts = []
+    for err in exc.errors()[:4]:
+        loc = ".".join(str(x) for x in err["loc"]) or "arguments"
+        parts.append(f"{loc}: {err['msg']}")
+    return "; ".join(parts)
 
 
 def _fn(
@@ -75,12 +122,20 @@ class IncidentToolbox:
             raise ToolError(name, f"unknown tool; available: {', '.join(TOOL_NAMES)}")
         if name in self._fail:
             raise ToolError(name, "data source unavailable (injected failure)")
+        if not isinstance(arguments, dict) or "_raw" in arguments:
+            raise ToolError(name, "arguments were not a valid JSON object; send a JSON object", bad_args=True)
         try:
-            return _clip(getattr(self, f"_{name}")(**arguments))
-        except TypeError as exc:
-            raise ToolError(name, f"bad arguments: {exc}") from exc
+            args = _ARG_MODELS[name].model_validate(arguments).model_dump()
+        except ValidationError as exc:
+            raise ToolError(name, f"bad arguments ({_describe(exc)})", bad_args=True) from exc
+        try:
+            return _clip(getattr(self, f"_{name}")(**args))
+        except ToolError:
+            raise
         except (OSError, json.JSONDecodeError) as exc:
             raise ToolError(name, f"data source unavailable: {exc}") from exc
+        except Exception as exc:  # a tool bug must never crash the investigation
+            raise ToolError(name, f"internal error: {type(exc).__name__}: {exc}") from exc
 
     def _get_incident_meta(self) -> str:
         return json.dumps(read_meta(self.incident_id), indent=1)
@@ -105,7 +160,6 @@ class IncidentToolbox:
         return "\n".join(out)
 
     def _search_logs(self, query: str, level: str = "ANY", limit: int = 15) -> str:
-        limit = max(1, min(int(limit), 25))
         q = query.lower()
         hits = [
             e for e in read_logs(self.incident_id) if q in e.message.lower() and (level == "ANY" or e.level == level)

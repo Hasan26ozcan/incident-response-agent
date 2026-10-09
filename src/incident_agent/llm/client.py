@@ -14,18 +14,29 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
 from pydantic import BaseModel
 
+from incident_agent.llm.schema import flatten_schema
+
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 
 
 class LLMUnavailable(RuntimeError):
-    """Provider unreachable or rate-limited even after retries."""
+    """Provider unreachable or rate-limited even after retries (transient: retrying later may work)."""
+
+
+class LLMConfigError(RuntimeError):
+    """Permanent request failure: bad/expired key, unknown model, or a request the provider rejects.
+
+    Deliberately NOT an ``LLMUnavailable``: agents degrade gracefully on outages, but a config error
+    must fail loudly so a wrong key never produces a run full of silent zero scores.
+    """
 
 
 @dataclass(frozen=True)
@@ -76,11 +87,54 @@ class LLMClient(Protocol):
 class OpenAICompatClient:
     """Chat client for any OpenAI-compatible endpoint (Groq, Cerebras, ...)."""
 
-    def __init__(self, model: str, api_key: str, base_url: str, max_retries: int = 5) -> None:
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        base_url: str,
+        max_retries: int = 5,
+        http_client: Any = None,
+    ) -> None:
         from openai import OpenAI
 
         self.model = model
-        self._client = OpenAI(api_key=api_key, base_url=base_url, max_retries=max_retries)
+        self._json_object_mode = False  # flips to True once the provider rejects json_schema
+        self._client = OpenAI(api_key=api_key, base_url=base_url, max_retries=max_retries, http_client=http_client)
+
+    def _create(self, kwargs: dict[str, Any]) -> Any:
+        """One provider call with permanent/transient errors mapped to our exception types."""
+        import openai
+
+        try:
+            return self._client.chat.completions.create(**kwargs)
+        except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as exc:
+            raise LLMUnavailable(f"{self.model}: {exc}") from exc
+        except (openai.AuthenticationError, openai.PermissionDeniedError) as exc:
+            raise LLMConfigError(f"{self.model}: API key rejected or not permitted ({exc})") from exc
+        except openai.NotFoundError as exc:
+            raise LLMConfigError(f"{self.model}: model or endpoint not found ({exc})") from exc
+
+    def _schema_kwargs(self, kwargs: dict[str, Any], schema: type[BaseModel]) -> dict[str, Any]:
+        flat = flatten_schema(schema.model_json_schema())
+        if self._json_object_mode:
+            note = "Reply with ONE JSON object matching this JSON schema, and nothing else:\n" + json.dumps(flat)
+            msgs = [*kwargs["messages"]]
+            if msgs and msgs[0].get("role") == "system":
+                msgs[0] = {**msgs[0], "content": f"{msgs[0]['content']}\n\n{note}"}
+            else:
+                msgs.insert(0, {"role": "system", "content": note})
+            return {**kwargs, "messages": msgs, "response_format": {"type": "json_object"}}
+        return {
+            **kwargs,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema.__name__,
+                    "schema": flat,
+                    "strict": False,  # best-effort; we validate with Pydantic and repair
+                },
+            },
+        }
 
     def chat(
         self,
@@ -99,30 +153,46 @@ class OpenAICompatClient:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
         if response_schema:
-            kwargs["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": response_schema.__name__,
-                    "schema": response_schema.model_json_schema(),
-                    "strict": False,  # best-effort; we validate with Pydantic and repair
-                },
-            }
-        try:
-            resp = self._client.chat.completions.create(**kwargs)
-        except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as exc:
-            raise LLMUnavailable(f"{self.model}: {exc}") from exc
+            try:
+                resp = self._create(self._schema_kwargs(kwargs, response_schema))
+            except LLMConfigError:
+                raise
+            except openai.BadRequestError:
+                if self._json_object_mode:
+                    raise
+                resp = self._json_object_retry(kwargs, response_schema)
+        else:
+            try:
+                resp = self._create(kwargs)
+            except openai.BadRequestError as exc:
+                raise LLMConfigError(f"{self.model}: request rejected by provider ({exc})") from exc
+        if not getattr(resp, "choices", None):
+            raise LLMUnavailable(f"{self.model}: provider returned an empty response (no choices)")
         msg = resp.choices[0].message
         calls: list[ToolCall] = []
         for tc in msg.tool_calls or []:
+            raw = tc.function.arguments or "{}"
             try:
-                args = json.loads(tc.function.arguments or "{}")
+                args = json.loads(raw)
             except json.JSONDecodeError:
-                args = {"_raw": tc.function.arguments}
-            calls.append(ToolCall(id=tc.id, name=tc.function.name, arguments=args if isinstance(args, dict) else {}))
+                args = {"_raw": raw}
+            if not isinstance(args, dict):
+                args = {"_raw": raw}
+            calls.append(ToolCall(id=tc.id, name=tc.function.name, arguments=args))
         usage = {}
         if resp.usage:
             usage = {"prompt_tokens": resp.usage.prompt_tokens, "completion_tokens": resp.usage.completion_tokens}
         return LLMResponse(content=msg.content, tool_calls=calls, usage=usage)
+
+    def _json_object_retry(self, kwargs: dict[str, Any], schema: type[BaseModel]) -> Any:
+        """Provider rejected json_schema: remember that and retry in json_object mode."""
+        import openai
+
+        self._json_object_mode = True
+        try:
+            return self._create(self._schema_kwargs(kwargs, schema))
+        except openai.BadRequestError as exc:
+            raise LLMConfigError(f"{self.model}: provider rejects both json_schema and json_object ({exc})") from exc
 
 
 class FallbackClient:
@@ -135,13 +205,19 @@ class FallbackClient:
         self.model = clients[0].model
 
     def chat(self, messages: list[dict[str, Any]], **kwargs: Any) -> LLMResponse:
-        last: Exception | None = None
+        errors: list[Exception] = []
         for c in self.clients:
             try:
                 return c.chat(messages, **kwargs)
-            except LLMUnavailable as exc:
-                last = exc
-        raise LLMUnavailable(f"all providers unavailable: {last}")
+            except (LLMUnavailable, LLMConfigError) as exc:
+                errors.append(exc)
+        detail = "; ".join(str(e) for e in errors)
+        if any(isinstance(e, LLMUnavailable) for e in errors):
+            raise LLMUnavailable(f"all providers unavailable: {detail}")
+        raise LLMConfigError(f"all providers failed: {detail}")
+
+
+_PLACEHOLDER = re.compile(r"your[_-]?(api[_-]?)?key|changeme|<.*>|^x{4,}$", re.IGNORECASE)
 
 
 def _dotenv_candidates() -> list[Path]:
@@ -163,7 +239,7 @@ def _load_dotenv(path: Path | None = None) -> None:
             key, _, value = line.partition("=")
             key = key.strip()
             value = value.strip().strip("\"'")
-            if key and value:
+            if key and value and not _PLACEHOLDER.search(value):
                 os.environ.setdefault(key, value)
 
 

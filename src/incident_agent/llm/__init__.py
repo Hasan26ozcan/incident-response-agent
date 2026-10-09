@@ -4,6 +4,7 @@ from incident_agent.llm.cache import CachedClient
 from incident_agent.llm.client import (
     FallbackClient,
     LLMClient,
+    LLMConfigError,
     LLMResponse,
     LLMUnavailable,
     OpenAICompatClient,
@@ -18,6 +19,7 @@ __all__ = [
     "CachedClient",
     "FallbackClient",
     "LLMClient",
+    "LLMConfigError",
     "LLMResponse",
     "LLMUnavailable",
     "OpenAICompatClient",
