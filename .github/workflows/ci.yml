@@ -52,15 +52,15 @@ jobs:
       - name: Validate dataset integrity (Stage 1 regression check)
         run: python3 eval/validate_dataset.py
 
-      - name: Install trivy
+      - name: Trivy scan of project Dockerfiles (fs)
+        # trivy-action is a *scanner*, not an installer: give it an explicit target.
         uses: aquasecurity/trivy-action@master
         with:
-          trivy-version: 'v0.59'
-
-      - name: Trivy vulnerability scan on project Dockerfiles
-        run: |
-          trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed docker/
-          trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed python:3.11-slim || true
+          scan-type: fs
+          scan-ref: docker/
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
 
   sandbox-image:
     runs-on: ubuntu-latest
