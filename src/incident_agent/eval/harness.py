@@ -244,8 +244,53 @@ def make_llm_react(temperature: float = 0.0) -> Callable[[str], DiagnosisResult]
     return run
 
 
+def make_llm_orchestrator(temperature: float = 0.0, parallel: bool = True) -> Callable[[str], DiagnosisResult]:
+    """Adapter factory for the LLM orchestrator-workers system (same scoring, same accounting)."""
+    from incident_agent.agents.llm_orchestrator import LLMOrchestrator
+    from incident_agent.llm import TrackingClient, build_client
+
+    shared = build_client()
+
+    def run(incident_id: str) -> DiagnosisResult:
+        client = TrackingClient(shared)
+        agent = LLMOrchestrator(client, temperature=temperature, parallel=parallel)
+        try:
+            d = agent.run(incident_id)
+        except Exception as exc:
+            return DiagnosisResult(
+                incident_id,
+                f"Unknown (error: {exc})",
+                error=f"{type(exc).__name__}: {exc}",
+                trace=_agent_trace(agent),
+                usage=client.summary(),
+            )
+        trace = _agent_trace(agent)
+        trace["diagnosis"] = d.model_dump(mode="json")
+        return DiagnosisResult(
+            incident_id=incident_id,
+            root_cause=d.root_cause,
+            evidence=[e.detail for e in d.evidence],
+            risk_tier=d.risk_tier.value,
+            steps=len(d.reasoning_steps),
+            trace=trace,
+            usage=client.summary(),
+            degraded=agent.degraded or "",
+        )
+
+    return run
+
+
 def _agent_trace(agent: Any) -> dict[str, Any]:
+    extra: dict[str, Any] = {}
+    if hasattr(agent, "outcomes"):  # orchestrator: per-worker reports and failures
+        extra = {
+            "workers": {
+                n: {"report": o.report.model_dump() if o.report else None, "error": o.error}
+                for n, o in agent.outcomes.items()
+            }
+        }
     return {
+        **extra,
         "model": getattr(agent.client, "model", "unknown"),
         "plan_history": [p.model_dump() for p in agent.plan_history],
         "transcript": list(agent.transcript),
@@ -254,7 +299,7 @@ def _agent_trace(agent: Any) -> dict[str, Any]:
     }
 
 
-ADAPTER_NAMES = ("react_baseline", "llm_react")
+ADAPTER_NAMES = ("react_baseline", "llm_react", "llm_orchestrator")
 
 
 def make_adapter(name: str, temperature: float = 0.0) -> Callable[[str], DiagnosisResult]:
@@ -262,6 +307,8 @@ def make_adapter(name: str, temperature: float = 0.0) -> Callable[[str], Diagnos
         return react_baseline
     if name == "llm_react":
         return make_llm_react(temperature)
+    if name == "llm_orchestrator":
+        return make_llm_orchestrator(temperature)
     raise ValueError(f"unknown agent {name!r}; choose from {ADAPTER_NAMES}")
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from pydantic import BaseModel
@@ -18,6 +19,7 @@ class TrackingClient:
         self.calls = 0
         self.prompt_tokens = 0
         self.completion_tokens = 0
+        self._lock = threading.Lock()  # workers may call concurrently
 
     def chat(
         self,
@@ -28,9 +30,10 @@ class TrackingClient:
         temperature: float = 0.0,
     ) -> LLMResponse:
         resp = self.inner.chat(messages, tools=tools, response_schema=response_schema, temperature=temperature)
-        self.calls += 1
-        self.prompt_tokens += resp.usage.get("prompt_tokens", 0)
-        self.completion_tokens += resp.usage.get("completion_tokens", 0)
+        with self._lock:
+            self.calls += 1
+            self.prompt_tokens += resp.usage.get("prompt_tokens", 0)
+            self.completion_tokens += resp.usage.get("completion_tokens", 0)
         return resp
 
     def summary(self) -> dict[str, int]:

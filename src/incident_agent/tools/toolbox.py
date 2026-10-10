@@ -104,22 +104,35 @@ TOOL_SPECS: list[dict[str, Any]] = [
 TOOL_NAMES = [t["function"]["name"] for t in TOOL_SPECS]
 
 
+def specs_for(names: set[str] | list[str]) -> list[dict[str, Any]]:
+    """Tool specs restricted to ``names`` (order preserved)."""
+    return [t for t in TOOL_SPECS if t["function"]["name"] in names]
+
+
 def _clip(text: str) -> str:
     return text if len(text) <= MAX_OUTPUT_CHARS else text[:MAX_OUTPUT_CHARS] + "\n...[truncated]"
 
 
 class IncidentToolbox:
-    def __init__(self, incident_id: str, fail_tools: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        incident_id: str,
+        fail_tools: set[str] | None = None,
+        allowed_tools: set[str] | None = None,
+    ) -> None:
         if not _ID.match(incident_id):
             raise ValueError(f"invalid incident id: {incident_id!r}")
         if not (PROJECT_ROOT / "data" / "incidents" / incident_id).is_dir():
             raise ValueError(f"unknown incident: {incident_id}")
         self.incident_id = incident_id
         self._fail = fail_tools or set()  # fault injection for recovery tests
+        self.allowed = set(TOOL_NAMES) if allowed_tools is None else set(allowed_tools) & set(TOOL_NAMES)
 
     def call(self, name: str, arguments: dict[str, Any]) -> str:
         if name not in TOOL_NAMES:
             raise ToolError(name, f"unknown tool; available: {', '.join(TOOL_NAMES)}")
+        if name not in self.allowed:
+            raise ToolError(name, f"not available to you; your tools: {', '.join(sorted(self.allowed))}", bad_args=True)
         if name in self._fail:
             raise ToolError(name, "data source unavailable (injected failure)")
         if not isinstance(arguments, dict) or "_raw" in arguments:
