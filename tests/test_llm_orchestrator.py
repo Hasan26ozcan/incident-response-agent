@@ -3,101 +3,17 @@
 from __future__ import annotations
 
 import json
-import threading
-from typing import Any
 
 import pytest
-from pydantic import BaseModel
 
 from incident_agent.agents.llm_orchestrator import (
     LLMOrchestrator,
-    TriagePlan,
-    WorkerReport,
 )
-from incident_agent.agents.llm_react_agent import LLMDiagnosis
-from incident_agent.llm import LLMConfigError, LLMResponse, LLMUnavailable, ToolCall, TrackingClient
+from incident_agent.llm import LLMConfigError, LLMUnavailable, TrackingClient
 from incident_agent.prompts import orchestrator_prompts as P
 from incident_agent.schemas.agent_output import RiskTier
 from incident_agent.tools.toolbox import IncidentToolbox, ToolError
-
-TOOL_FOR = {"log": ("log_overview", {}), "metrics": ("get_metric_summary", {}), "deploy": ("get_recent_deploys", {})}
-FINAL = {
-    "is_false_alarm": False,
-    "root_cause": "An unbounded retry loop saturated the checkout service CPU.",
-    "confidence": 0.8,
-    "evidence": [{"source_type": "log_entry", "source": "logs.log", "detail": "retry loop", "timestamp": ""}],
-    "affected_service": "checkout-api",
-    "category": "cpu_exhaustion",
-    "reasoning_steps": ["CPU rose first", "no deploy changes"],
-    "recommendation": "Restart the pods and cap the retry loop.",
-    "risk_tier": "high",
-}
-REPORT = {
-    "domain_normal": False,
-    "summary": "Errors dominate this domain after the onset.",
-    "facts": [{"claim": "errors rise", "quote": "ERROR", "timestamp": ""}],
-    "anomaly_onset": "00:40",
-    "suspected_cause": "retry loop",
-    "confidence": 0.7,
-}
-TRIAGE = {
-    "hypotheses": ["retry storm"],
-    "assignments": [{"worker": "log", "focus": "find first errors"}, {"worker": "metrics", "focus": "cpu onset"}],
-}
-
-
-def _json(o: Any) -> LLMResponse:
-    return LLMResponse(content=json.dumps(o), usage={"prompt_tokens": 10, "completion_tokens": 5})
-
-
-class RoutingFake:
-    """Thread-safe fake that answers by role (system prompt), so concurrent workers cannot race a script."""
-
-    model = "routing-fake"
-
-    def __init__(self, *, fail: dict[str, Exception] | None = None, final: Any = FINAL, report: Any = REPORT) -> None:
-        self.lock = threading.Lock()
-        self.calls: list[tuple[str, str]] = []
-        self.fail = fail or {}
-        self.final = final
-        self.report = report
-        self.tool_turns: dict[str, int] = {}
-
-    @staticmethod
-    def role(messages: list[dict[str, Any]], schema: type[BaseModel] | None) -> str:
-        sys = messages[0]["content"]
-        if sys.startswith("You are the triage lead"):
-            return "triage"
-        if sys.startswith("You are the incident lead"):
-            return "synth"
-        for name in ("log", "metrics", "deploy"):
-            if sys.startswith(f"You are the {name} specialist"):
-                return name
-        return "unknown"
-
-    def chat(self, messages, *, tools=None, response_schema=None, temperature=0.0):
-        role = self.role(messages, response_schema)
-        with self.lock:
-            self.calls.append((role, response_schema.__name__ if response_schema else "tools"))
-            turn = self.tool_turns.get(role, 0)
-            if tools:
-                self.tool_turns[role] = turn + 1
-        if role in self.fail:
-            raise self.fail[role]
-        if response_schema is TriagePlan:
-            return _json(TRIAGE)
-        if response_schema is LLMDiagnosis:
-            return (
-                LLMResponse(content=json.dumps(self.final))
-                if not isinstance(self.final, str)
-                else LLMResponse(content=self.final)
-            )
-        if response_schema is WorkerReport:
-            return LLMResponse(content=json.dumps(self.report))
-        if tools and turn == 0:
-            name, args = TOOL_FOR[role]
-            return LLMResponse(tool_calls=[ToolCall(id=f"{role}0", name=name, arguments=args)])
-        return LLMResponse(content="ready")
+from tests.fakes import FINAL, REPORT, RoutingFake
 
 
 def test_full_pipeline_dispatches_three_workers_and_synthesises():
@@ -117,9 +33,7 @@ def test_each_worker_only_sees_its_own_tools():
     class Spy(RoutingFake):
         def chat(self, messages, *, tools=None, response_schema=None, temperature=0.0):
             if tools:
-                seen.setdefault(self.role(messages, response_schema), set()).update(
-                    t["function"]["name"] for t in tools
-                )
+                seen.setdefault(self.role(messages), set()).update(t["function"]["name"] for t in tools)
             return super().chat(messages, tools=tools, response_schema=response_schema, temperature=temperature)
 
     LLMOrchestrator(Spy()).run("INC-001")

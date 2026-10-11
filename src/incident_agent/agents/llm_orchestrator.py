@@ -73,6 +73,19 @@ class WorkerOutcome:
     error: str = ""
 
 
+def reports_json(outcomes: list[WorkerOutcome], limit: int = 9000) -> str:
+    """Worker reports as JSON; every fact carries ``verified`` (quote found in that worker's tool output)."""
+    blob: dict[str, Any] = {}
+    for o in outcomes:
+        if o.report is None:
+            continue
+        seen = tokens("\n".join(o.transcript))
+        d = o.report.model_dump()
+        d["facts"] = [{**f, "verified": is_grounded(f["quote"], seen)} for f in d["facts"]]
+        blob[o.name] = d
+    return json.dumps(blob, indent=1)[:limit]
+
+
 def _default_triage() -> TriagePlan:
     return TriagePlan(
         hypotheses=["unknown: sweep every domain"],
@@ -191,15 +204,7 @@ class LLMOrchestrator:
 
     # -- synthesis ------------------------------------------------------------
     def _reports_json(self, outcomes: list[WorkerOutcome]) -> str:
-        blob: dict[str, Any] = {}
-        for o in outcomes:
-            if o.report is None:
-                continue
-            seen = tokens("\n".join(o.transcript))
-            d = o.report.model_dump()
-            d["facts"] = [{**f, "verified": is_grounded(f["quote"], seen)} for f in d["facts"]]
-            blob[o.name] = d
-        return json.dumps(blob, indent=1)[:9000]
+        return reports_json(outcomes)
 
     def run(self, incident_id: str) -> Diagnosis:
         self._reset()

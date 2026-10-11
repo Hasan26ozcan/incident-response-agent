@@ -280,6 +280,52 @@ def make_llm_orchestrator(temperature: float = 0.0, parallel: bool = True) -> Ca
     return run
 
 
+def make_llm_swarm(temperature: float = 0.0, allow_revision: bool = True) -> Callable[[str], DiagnosisResult]:
+    """Adapter factory for the hierarchical swarm (commander over orchestrator over workers)."""
+    from incident_agent.agents.swarm import HierarchicalSwarm
+    from incident_agent.llm import TrackingClient, build_client
+
+    shared = build_client()
+
+    def run(incident_id: str) -> DiagnosisResult:
+        client = TrackingClient(shared)
+        agent = HierarchicalSwarm(client, temperature=temperature, allow_revision=allow_revision)
+        try:
+            out = agent.run(incident_id)
+        except Exception as exc:
+            return DiagnosisResult(
+                incident_id,
+                f"Unknown (error: {exc})",
+                error=f"{type(exc).__name__}: {exc}",
+                trace=_agent_trace(agent),
+                usage=client.summary(),
+            )
+        d = out.diagnosis
+        trace = _agent_trace(agent)
+        trace["diagnosis"] = d.model_dump(mode="json")
+        trace["commander"] = {
+            "escalation": out.escalation_decision,
+            "escalation_reason": agent.result.escalation_reason if agent.result else "",
+            "severity": out.severity_assessment,
+            "narrative": out.narrative,
+            "revision_applied": bool(agent.result and agent.result.revision_applied),
+            "fallback": agent.result.fallback_reason if agent.result else "",
+            "confidence": out.confidence,
+        }
+        return DiagnosisResult(
+            incident_id=incident_id,
+            root_cause=d.root_cause,
+            evidence=[e.detail for e in d.evidence],
+            risk_tier=d.risk_tier.value,
+            steps=len(d.reasoning_steps),
+            trace=trace,
+            usage=client.summary(),
+            degraded=agent.degraded or "",
+        )
+
+    return run
+
+
 def _agent_trace(agent: Any) -> dict[str, Any]:
     extra: dict[str, Any] = {}
     if hasattr(agent, "outcomes"):  # orchestrator: per-worker reports and failures
@@ -299,7 +345,7 @@ def _agent_trace(agent: Any) -> dict[str, Any]:
     }
 
 
-ADAPTER_NAMES = ("react_baseline", "llm_react", "llm_orchestrator")
+ADAPTER_NAMES = ("react_baseline", "llm_react", "llm_orchestrator", "llm_swarm", "llm_swarm_norevise")
 
 
 def make_adapter(name: str, temperature: float = 0.0) -> Callable[[str], DiagnosisResult]:
@@ -309,6 +355,10 @@ def make_adapter(name: str, temperature: float = 0.0) -> Callable[[str], Diagnos
         return make_llm_react(temperature)
     if name == "llm_orchestrator":
         return make_llm_orchestrator(temperature)
+    if name == "llm_swarm":
+        return make_llm_swarm(temperature)
+    if name == "llm_swarm_norevise":  # ablation: commander writes narrative/severity/escalation, cannot revise
+        return make_llm_swarm(temperature, allow_revision=False)
     raise ValueError(f"unknown agent {name!r}; choose from {ADAPTER_NAMES}")
 
 
