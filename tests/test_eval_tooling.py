@@ -22,7 +22,7 @@ def sandbox(monkeypatch, tmp_path):
     monkeypatch.setattr(harness, "RESULTS_DIR", tmp_path / "results")
     monkeypatch.setattr(harness, "TRACE_DIR", tmp_path / "traces")
     monkeypatch.setattr(harness, "OPENINGS_LOG", tmp_path / "openings.log")
-    monkeypatch.setattr(harness, "make_adapter", lambda name, temperature=0.0: _fake)
+    monkeypatch.setattr(harness, "make_adapter", lambda name, temperature=0.0, risk_guard=False: _fake)
     return tmp_path
 
 
@@ -84,7 +84,7 @@ def test_incremental_save_and_resume(sandbox):
             raise KeyboardInterrupt  # simulates quota cut-off / Ctrl+C (not caught as a crash)
         return _fake(iid)
 
-    harness.make_adapter = lambda name, temperature=0.0: flaky  # type: ignore[assignment]
+    harness.make_adapter = lambda name, temperature=0.0, risk_guard=False: flaky  # type: ignore[assignment]
     with pytest.raises(KeyboardInterrupt):
         harness.main(["--agent", "llm_react", "--split", "dev", "--tag", "r"])
     path = sandbox / "results" / "llm_react__r.json"
@@ -97,7 +97,7 @@ def test_incremental_save_and_resume(sandbox):
         resumed.append(iid)
         return _fake(iid)
 
-    harness.make_adapter = lambda name, temperature=0.0: ok  # type: ignore[assignment]
+    harness.make_adapter = lambda name, temperature=0.0, risk_guard=False: ok  # type: ignore[assignment]
     harness.main(["--agent", "llm_react", "--split", "dev", "--tag", "r", "--resume"])
     final = json.loads(path.read_text())
     assert final["meta"]["complete"] is True and len(final["incidents"]) == 10

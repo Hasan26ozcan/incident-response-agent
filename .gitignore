@@ -23,6 +23,7 @@ node_modules/
 # Eval / data artifacts (added when Stage 1+ lands)
 data/generated/
 eval/results/
+eval/traces/
 
 # Coverage
 .coverage

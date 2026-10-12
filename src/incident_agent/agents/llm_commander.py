@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from incident_agent.agents.grounding import is_grounded, tokens
 from incident_agent.agents.llm_orchestrator import WORKER_ORDER, WorkerOutcome, reports_json
+from incident_agent.agents.risk_guard import apply_risk_guard
 from incident_agent.llm import LLMClient, LLMUnavailable, StructuredOutputError, generate_structured
 from incident_agent.prompts import commander_prompts as P
 from incident_agent.schemas.agent_output import (
@@ -236,12 +237,14 @@ class LLMIncidentCommander:
         confidence_threshold: float = 0.7,
         temperature: float = 0.0,
         max_repairs: int = 2,
+        risk_guard: bool = False,
     ) -> None:
         self.client = client
         self.allow_revision = allow_revision
         self.confidence_threshold = confidence_threshold
         self.temperature = temperature
         self.max_repairs = max_repairs
+        self.risk_guard = risk_guard
 
     # -- review ---------------------------------------------------------------
     def _review(self, incident_id: str, meta: str, diagnosis: Diagnosis, outcomes: list[WorkerOutcome], sig: Signals):
@@ -345,6 +348,8 @@ class LLMIncidentCommander:
         final, revised = diagnosis, False
         if review is not None:
             final, revised = self._apply_revision(diagnosis, review, transcript, notes)
+            if self.risk_guard and revised:
+                final = apply_risk_guard(final)[0]
             narrative = review.narrative
             severity, rationale = review.severity, review.severity_rationale
             questions = review.open_questions

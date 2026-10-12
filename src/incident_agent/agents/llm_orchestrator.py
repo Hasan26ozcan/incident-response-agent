@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from incident_agent.agents.grounding import degraded_diagnosis, ground_diagnosis, is_grounded, tokens
 from incident_agent.agents.llm_react_agent import LLMDiagnosis
+from incident_agent.agents.risk_guard import apply_risk_guard
 from incident_agent.agents.tool_loop import ToolLoop
 from incident_agent.llm import LLMClient, LLMConfigError, LLMUnavailable, StructuredOutputError, generate_structured
 from incident_agent.prompts import orchestrator_prompts as P
@@ -108,6 +109,7 @@ class LLMOrchestrator:
         worker_max_tool_calls: int = 6,
         fail_tools: set[str] | None = None,
         fail_workers: set[str] | None = None,
+        risk_guard: bool = False,
     ) -> None:
         self.client = client
         self.parallel = parallel
@@ -118,6 +120,7 @@ class LLMOrchestrator:
         self.worker_max_tool_calls = worker_max_tool_calls
         self.fail_tools = fail_tools or set()
         self.fail_workers = fail_workers or set()  # fault injection: these workers raise
+        self.risk_guard = risk_guard
         self._reset()
 
     def _reset(self) -> None:
@@ -246,4 +249,5 @@ class LLMOrchestrator:
             self.degraded = f"synthesis failed ({type(exc).__name__}): {str(exc)[:200]}"
             return degraded_diagnosis(self.agent_type, incident_id, joined, self.degraded, calls)
         notes = [f"Coverage: worker(s) failed: {', '.join(sorted(failed))}; confidence reflects missing data."]
-        return ground_diagnosis(self.agent_type, incident_id, out, joined, notes=notes if failed else None)
+        d = ground_diagnosis(self.agent_type, incident_id, out, joined, notes=notes if failed else None)
+        return apply_risk_guard(d)[0] if self.risk_guard else d

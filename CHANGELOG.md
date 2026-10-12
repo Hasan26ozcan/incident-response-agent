@@ -3,6 +3,22 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Pre-Stage-8 hardening] — 2026-10
+### Added
+- LLM layer (`llm/`): OpenAI-compatible client (Groq/Cerebras), cache, fallback, usage tracking, schema flattening, structured output with repair loop; `LLMUnavailable` (transient) vs `LLMConfigError` (permanent).
+- `LLMReActAgent`, shared `ToolLoop` (duplicate/budget/bad-argument guards, `<tool_output>` wrapping, replan hook), `grounding.py`, validated `IncidentToolbox`.
+- Stage 6: `LLMOrchestrator` (triage cannot drop workers, scoped workers, parallel, per-worker failure isolation).
+- Stage 7: `LLMIncidentCommander` and `HierarchicalSwarm` (deterministic escalation policy, evidence-gated revision).
+- `risk_guard.py`: deterministic risk-tier floor from `openspec/risk-classification.md`; only ever raises the tier (`--risk-guard`).
+- Eval tooling: harness (dev/test split, tags, traces, resume), `eval.compare` (paired bootstrap), `eval.judge` (cross-model judge), `eval.preflight`.
+- CLI: `diagnose --agent llm|orchestrator|swarm|legacy [--risk-guard]`.
+- Docs: `docs/EVAL.md`, `docs/RESULTS.md`, OpenSpec changes 012-014.
+### Changed
+- CI: pinned `trivy-action` to v0.36.0; sandbox image drops setuptools/wheel; filesystem scan for `docker/`.
+- README/ROADMAP rewritten to state real status (no stage is called measured without numbers).
+### Fixed
+- Tests no longer require `httpx` (openai 3.x uses `httpx2`).
+
 ## [Stage 11] — Reranking — 2026-09-28
 ### Added
 - `src/incident_agent/schemas/reranking.py` — `RelevanceDelta` and `RerankedResult` Pydantic models:

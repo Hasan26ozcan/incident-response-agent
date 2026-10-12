@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
 def _cmd_diagnose(args: list[str]) -> int:
     """Run the ReAct agent against a single incident."""
     if not args:
-        print("Usage: incident-agent diagnose <INC-ID> [--agent llm|legacy]")
+        print("Usage: incident-agent diagnose <INC-ID> [--agent llm|orchestrator|swarm|legacy] [--risk-guard]")
         print("Example: incident-agent diagnose INC-001")
         return 1
 
@@ -44,12 +44,24 @@ def _cmd_diagnose(args: list[str]) -> int:
     mode = "llm" if os.environ.get("GROQ_API_KEY") else "legacy"
     if "--agent" in args:
         mode = args[args.index("--agent") + 1]
-    if mode == "llm":
-        from incident_agent.agents.llm_react_agent import LLMReActAgent
+    guard = "--risk-guard" in args
+    if mode in ("llm", "orchestrator", "swarm"):
         from incident_agent.llm import build_client
 
         try:
-            diagnosis = LLMReActAgent(build_client()).run(incident_id)
+            client = build_client()
+            if mode == "llm":
+                from incident_agent.agents.llm_react_agent import LLMReActAgent
+
+                diagnosis = LLMReActAgent(client, risk_guard=guard).run(incident_id)
+            elif mode == "orchestrator":
+                from incident_agent.agents.llm_orchestrator import LLMOrchestrator
+
+                diagnosis = LLMOrchestrator(client, risk_guard=guard).run(incident_id)
+            else:
+                from incident_agent.agents.swarm import HierarchicalSwarm
+
+                diagnosis = HierarchicalSwarm(client, risk_guard=guard).run(incident_id)
         except LLMUnavailable as exc:
             print(f"LLM unavailable: {exc}", file=sys.stderr)
             return 1

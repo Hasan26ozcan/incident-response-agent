@@ -1,223 +1,88 @@
 # Incident Response Agent
 
-An agentic AI system that triages, diagnoses, and (eventually) helps remediate
-production incidents — built as a 23-stage, portfolio-grade project spanning
-single-agent basics, multi-agent orchestration, retrieval/memory,
-tool integration (MCP), durable workflows (Temporal), human-in-the-loop
-approval, and full evaluation/observability.
+An agentic AI system that triages and diagnoses production incidents, built as a
+23-stage, eval-first project: single agent, orchestrator-workers, hierarchical
+swarm, retrieval/memory, tooling, durable workflows, human-in-the-loop, and
+evaluation/observability.
 
-This repo is deliberately built **stage by stage**, with each stage producing
-a demonstrable artifact, so the project has portfolio value even if later
-stages are cut short.
+Every claim in this repo is meant to be backed by a **measured** number on a frozen
+gold set. Where a stage has not been measured yet, the table below says so.
 
-## Status
+## Status (honest)
 
-✅ **Stage 1 — Synthetic Incident Dataset** (complete)
+| Stage | What | State | Measured |
+|------:|------|-------|----------|
+| 0 | Spec & architecture (OpenSpec) | done | n/a |
+| 1 | Synthetic dataset, gold set, rubric (20 incidents) | done | n/a |
+| 2 | Repo skeleton, CI (ruff, mypy, bandit, pytest, sandbox image scan) | done | n/a |
+| 3 | Single-agent ReAct (LLM, tool calling, grounding) | implemented, hardened | see `docs/RESULTS.md` |
+| 4 | Structured output (schema-validated, repair loop) | implemented, hardened | see `docs/RESULTS.md` |
+| 5 | Dynamic planning and error recovery (replan on tool failure) | implemented, hardened | n/a (behavioural tests) |
+| 6 | Orchestrator-workers (LLM triage, scoped parallel workers) | implemented | pending ablation |
+| 7 | Hierarchical swarm (commander, deterministic escalation policy) | implemented | pending ablation |
+| 8-12 | Debate, ToT, hybrid retrieval, reranking, episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
+| 13-22 | MCP, Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
 
-- 20 synthetic incident scenarios across 19 categories
-- Gold answers, rubric, and validation tooling complete
-- **519+ tests passing** across all stages
-- Test environment verified: PyTorch 2.14.0+cpu, NumPy 2.4.6
+"Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).
+It does **not** mean "proven better". The measured column is filled from real runs only
+(see `docs/EVAL.md`, `docs/RESULTS.md`).
 
-✅ **Stage 2 — Repo Skeleton & CI Baseline** (complete)
+## Two code lines
 
-See [`ROADMAP.md`](./ROADMAP.md) for the full 23-stage plan across 8 phases,
-and [`openspec/`](./openspec) for the formal spec, proposal, and design
-decisions behind this stage.
+* **LLM line (trusted, being measured):** `agents/llm_react_agent.py`, `tool_loop.py`,
+  `grounding.py`, `llm_orchestrator.py`, `llm_commander.py`, `swarm.py`, `risk_guard.py`,
+  plus `llm/` (client, cache, fallback, structured output) and `tools/toolbox.py`.
+* **Legacy line (rule-based, kept for back-compat):** `react_agent.py`, `orchestrator.py`,
+  `worker.py`, `incident_commander.py` and Stage 8-12 modules. The legacy orchestrator
+  measured F1 0.068 / risk accuracy 0.0 on the gold set; do not treat it as evidence.
 
-✅ **Stage 3 — Single-Agent ReAct Loop** (complete)
+## Quickstart
 
-- ReActAgent with observe/reason/act/repeat loop
-- Tool functions for logs, metrics, deploys, metadata
-- CLI `diagnose` subcommand
-- **220 tests passing**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+Copy-Item .env.example .env       # then set GROQ_API_KEY (never commit it)
+python -m pytest -q
+python -m incident_agent diagnose INC-001 --agent swarm --risk-guard
+```
 
-✅ **Stage 11 — Cross-Encoder Re-ranking** (complete)
+`--agent` accepts `llm` (single ReAct), `orchestrator`, `swarm`, `legacy`. Without
+`--agent`, the CLI uses the LLM agent when `GROQ_API_KEY` is set, else the legacy one.
 
-- `CrossEncoderReranker` re-ranks top-N candidates from hybrid retrieval using a cross-encoder that scores query-document pairs jointly
-- `RerankerAgent` produces validated `RerankedResult` with before/after comparison
-- MRR and Precision@K metrics quantify retrieval quality improvement
-- `improvement_score` measures net gain from cross-encoder reranking
-- `RelevanceDelta` tracks per-document relevance changes
-- ~628 tests passing (50+ Stage 11 + 578 existing)
-- See [`openspec/changes/011-reranking/proposal.md`](./openspec/changes/011-reranking/proposal.md) for the proposal
+## Evaluation workflow
 
-✅ **Stage 10 — Vector DB & Hybrid Retrieval** (complete)
+Short version (full runbook: [`docs/EVAL.md`](./docs/EVAL.md)):
 
-- `SearchHit` and `HybridSearchResult` Pydantic models for retrieval output
-- `BM25Retriever`: keyword-based BM25+ retrieval over incident text
-- `DenseRetriever`: numpy TF-IDF cosine-similarity retrieval
-- `rrf_rank()` and `HybridRetriever`: Reciprocal Rank Fusion of BM25 + Dense
-- `RetrievalAgent`: full hybrid search pipeline producing validated `HybridSearchResult`
-- `qdrant-client` dependency for vector storage (local/in-memory mode)
-- **~578 tests passing** (58+ Stage 10 + 520 existing)
-- See [`openspec/changes/010-vector-db-hybrid-retrieval/proposal.md`](./openspec/changes/010-vector-db-hybrid-retrieval/proposal.md) for the proposal
+1. `python -m incident_agent.eval.preflight` checks the model supports chat, tool calling and structured output.
+2. Run baselines/agents on the **dev** split, tagged: `python -m incident_agent.eval.harness --agent llm_react --split dev --tag v0_dev --trace`.
+3. Compare runs with paired bootstrap CIs: `python -m incident_agent.eval.compare <run_a> <run_b>`.
+4. Optional LLM judge with a *different* model family: `python -m incident_agent.eval.judge --tag <tag> --split dev`.
+5. The **test** split is opened only at milestones (each opening is logged in `eval/test_openings.log`).
 
-✅ **Stage 9 — Tree-of-Thought + Plan-and-Solve** (complete)
+## Layout
 
-- `Hypothesis` and `TreeOfThoughtResult` Pydantic models for parallel hypothesis branching
-- `TreeOfThoughtAgent` generates N parallel hypotheses from a diagnosis
-- Each hypothesis is independently scored against the evidence
-- Best hypothesis is selected and validated via Plan-and-Solve
-- `accuracy_improvement` measures the measurable accuracy gain from ToT
-- Verdict-driven confidence adjustment with before/after comparison
-- `TreeOfThoughtResult.to_json()` / `from_json()` roundtrip and `format_report()`
-- **519 tests passing** (58 Stage 9 + 461 existing)
-- See [`openspec/changes/009-tree-of-thought/proposal.md`](./openspec/changes/009-tree-of-thought/proposal.md) for the proposal
-
-✅ **Stage 8 — Debate Mechanism** (complete)
-
-- `Argument` and `DebateOutcome` Pydantic models for debate outputs
-- `RootCauseAgent` argues for the initial diagnosis
-- `ForensicExaminerAgent` challenges the diagnosis looking for false positives
-- `DebateMechanism` orchestrates the debate and produces before/after false-positive rate comparison
-- Verdict system: confirmed / challenged / revised
-- `DebateOutcome.to_json()` / `from_json()` roundtrip and `format_report()`
-- **461 tests passing** (55 Stage 8 + 406 existing)
-- See [`openspec/changes/008-debate-mechanism/proposal.md`](./openspec/changes/008-debate-mechanism/proposal.md) for the proposal
-
-✅ **Stage 7 — Hierarchical Swarm** (complete)
-
-- `IncidentCommander` class sits above `OrchestratorAgent` in the hierarchy
-- Synthesizes worker findings into a unified incident narrative
-- Makes escalation decisions (`escalate` / `monitor` / `resolve`) based on risk tier and confidence
-- `CommanderDiagnosis` Pydantic model extends `AgentOutput` with narrative, escalation decision, severity assessment
-- Contains the full underlying `Diagnosis` and all `WorkerFinding` objects
-- **461+ tests passing** (55+ Stage 7 + 406 existing)
-- See [`openspec/changes/007-hierarchical-swarm/proposal.md`](./openspec/changes/007-hierarchical-swarm/proposal.md) for the proposal
-
-✅ **Stage 6 — Orchestrator–Workers** (complete)
-
-- `TriageAgent` (`OrchestratorAgent`) classifies incidents and dispatches specialist workers
-- Parallel specialist agents: `LogWorker`, `MetricsWorker`, `DeployHistoryWorker`
-- Each worker produces a validated `WorkerFinding` Pydantic object
-- `OrchestrationState` lightweight state machine tracks the workflow
-- **356 tests passing** (52 Stage 6 + 304 existing)
-- See [`openspec/changes/006-orchestrator-workers/proposal.md`](./openspec/changes/006-orchestrator-workers/proposal.md) for the proposal
-
-✅ **Stage 5 — Dynamic Planning & Error Recovery** (complete)
-
-- Plan-based execution with ordered diagnostic steps
-- Replanning loop rebuilds the plan when a step fails
-- `Plan`, `PlanStep`, `StepFailure` data structures
-- `generate_plan()` supports standard, log_only, metrics_only strategies
-- **304 tests passing** (35 Stage 5 + 269 existing)
-
-✅ **Stage 4 — Structured Output & Prompt Engineering** (complete)
-
-- All agent outputs validated via Pydantic schemas (`Diagnosis`, `EvidenceItem`, `ReasoningStep`, `IncidentMetadata`, `MetricAnomaly`, `AgentOutput`, `RiskTier`, `WorkerFinding`)
-- JSON-mode compatible serialization (`to_json()` / `from_json()`)
-- Prompt library with system prompt template, three few-shot examples, and `build_prompt()` utility
-- Cross-cutting rule enforced: every agent output is a validated Pydantic object
-- **82 tests passing** (49 Stage 4 + 28 Stage 3 + 5 smoke)
-- See [`openspec/changes/004-structured-output-prompt-engineering/proposal.md`](./openspec/changes/004-structured-output-prompt-engineering/proposal.md) for the proposal
+```
+data/            generator + 20 synthetic incidents (INC-001..020)
+eval/gold/       gold answers (kept apart from data/), splits.json (frozen dev/test)
+eval/results/    tagged run results (git-ignored); eval/traces/ per-incident traces (git-ignored)
+src/incident_agent/
+  llm/           client, cache, fallback, tracking, structured output, scripted fake
+  tools/         IncidentToolbox (validated tool args, per-worker allow-lists)
+  agents/        LLM line + legacy line (see above)
+  eval/          harness, compare, judge, preflight
+  schemas/ prompts/ retrieval/ workflows/ memory/
+openspec/        spec, risk classification, per-change proposals (changes/NNN-*)
+docs/            EVAL.md (runbook), RESULTS.md (measured numbers), AUDIT-STAGES-0-5.md
+tests/           pytest suite
+```
 
 ## Why OpenSpec
 
-This project uses [OpenSpec](https://github.com/Fission-AI/OpenSpec)-style
-spec-driven development: every non-trivial change starts as a **proposal**
-in `openspec/`, gets reviewed/approved, and only then gets implemented.
-See `openspec/comparison-bmad-speckit-openspec.md` for why this was chosen
-over BMAD-METHOD and GitHub Spec Kit.
-
-## Project layout
-
-```
-incident-response-agent/
-├── README.md
-├── ROADMAP.md
-├── CHANGELOG.md
-├── LICENSE
-├── .gitignore
-├── requirements.txt              # torch, numpy
-├── .venv/                        # Python environment (PyTorch 2.14.0+cpu)
-├── tests/                        # Test suite
-│   ├── __init__.py
-│   ├── conftest.py
-│   ├── test_torch_env.py         # torch/numpy environment verification
-│   └── test_dataset.py           # dataset integrity, validation, invariants
-├── data/
-│   ├── generate_dataset.py       # Deterministic dataset generator
-│   └── incidents/                # 20 incident scenarios (INC-001…INC-020)
-│       └── <id>/
-│           ├── meta.json
-│           ├── logs.log
-│           ├── metrics.json
-│           └── deploys.json
-├── eval/
-│   ├── validate_dataset.py       # Mechanical integrity/leakage validator
-│   ├── generate_gold_set_md.py   # Regenerates gold_set.md
-│   ├── rubric.md                 # Scoring rubric with hard gates
-│   ├── gold_set.md               # Human-readable summary table
-│   └── gold/                     # 20 gold answers (kept separate from data/)
-│       └── INC-0NN.json
-└── openspec/
-    ├── README.md
-    ├── proposal.md                          # Stage 0 proposal (scope, architecture)
-    ├── agent-responsibility-matrix.md       # Who does what, and who may act
-    ├── risk-classification.md               # Low / medium / high risk actions
-    ├── comparison-bmad-speckit-openspec.md  # BMAD vs Spec Kit vs OpenSpec
-    └── changes/                             # Per-stage OpenSpec proposals
-        └── 010-vector-db-hybrid-retrieval/  # Stage 10 proposal
-```
-
-Stage 2 already added `src/`, `agents/`, `mcp_servers/` (empty), and CI configuration
-on top of this foundation. Stage 4 added `schemas/` (Pydantic models) and `prompts/`
-(prompt library with few-shot examples). Stage 5 added `workflows/plan.py` (Plan,
-PlanStep, StepFailure) and updated `ReActAgent` with plan-based execution and replanning.
-Stage 7 added `agents/incident_commander.py` (IncidentCommander) and `schemas/command_diagnosis.py` (CommanderDiagnosis). Stage 6 added `agents/worker.py` (LogWorker, MetricsWorker, DeployHistoryWorker) and
-`agents/orchestrator.py` (OrchestratorAgent, OrchestrationState).
-Stage 10 added `retrieval/` (BM25, Dense, Hybrid, RRF) and `schemas/vector_search.py`
-(SearchHit, HybridSearchResult), plus `agents/retrieval_agent.py` (RetrievalAgent).
-Stage 11 added `retrieval/reranker.py` (CrossEncoderReranker) and
-`agents/reranker_agent.py` (RerankerAgent) with `schemas/reranking.py`
-(RelevanceDelta, RerankedResult) for cross-encoder re-ranking.
-
-## Getting started
-
-### Prerequisites
-- Python 3.11+
-- pip
-
-### Setup
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate          # Windows
-# source .venv/bin/activate       # macOS/Linux
-pip install -r requirements.txt
-pip install -e .
-```
-
-### Run a diagnosis
-```powershell
-Copy-Item .env.example .env
-# Set GROQ_API_KEY in .env, then:
-incident-agent diagnose INC-001
-# Or run without the installed console script:
-python -m incident_agent diagnose INC-001
-```
-
-The CLI uses the LLM agent when `GROQ_API_KEY` is set in the environment or
-`.env`; otherwise it uses the legacy rule-based agent. Pass `--agent llm` to
-require the LLM agent explicitly.
-
-### Regenerate the dataset
-```bash
-python data/generate_dataset.py   # Generate all 20 incidents + gold answers
-python eval/validate_dataset.py   # Validate integrity (no leakage, correct counts)
-python eval/generate_gold_set_md.py  # Regenerate gold_set.md
-```
-
-### Run tests
-```bash
-python -m pytest tests/ -v        # ~628 tests — all should pass
-```
-
-### Verify the torch environment
-```bash
-python -m pytest tests/test_torch_env.py -v
-```
+Non-trivial changes start as a proposal in `openspec/changes/`. See
+`openspec/comparison-bmad-speckit-openspec.md` for the rationale.
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE).
+MIT, see [`LICENSE`](./LICENSE).

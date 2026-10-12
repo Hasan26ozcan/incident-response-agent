@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from incident_agent.agents.grounding import degraded_diagnosis, ground_diagnosis
+from incident_agent.agents.risk_guard import apply_risk_guard
 from incident_agent.agents.tool_loop import ToolLoop, wrap_output
 from incident_agent.llm import LLMClient, LLMUnavailable, StructuredOutputError, generate_structured
 from incident_agent.prompts import agent_prompts as P
@@ -75,6 +76,7 @@ class LLMReActAgent:
         max_tool_calls: int = 12,
         max_bad_calls: int = 4,
         max_duplicates: int = 3,
+        risk_guard: bool = False,
     ) -> None:
         self.client = client
         self.max_steps = max_steps
@@ -85,6 +87,7 @@ class LLMReActAgent:
         self.max_tool_calls = max_tool_calls
         self.max_bad_calls = max_bad_calls
         self.max_duplicates = max_duplicates
+        self.risk_guard = risk_guard
         self.degraded: str | None = None  # set when the run could not finish normally
         self.plan_history: list[LLMPlan] = []
         self.unavailable: set[str] = set()
@@ -180,4 +183,5 @@ class LLMReActAgent:
             self.degraded = f"{self.degraded}; {reason}" if self.degraded else reason
             calls = sum(1 for line in self.transcript if line.startswith("> "))
             return degraded_diagnosis(self.agent_type, incident_id, joined, self.degraded, calls)
-        return ground_diagnosis(self.agent_type, incident_id, out, joined)
+        d = ground_diagnosis(self.agent_type, incident_id, out, joined)
+        return apply_risk_guard(d)[0] if self.risk_guard else d

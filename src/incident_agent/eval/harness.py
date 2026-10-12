@@ -206,7 +206,7 @@ def react_baseline(incident_id: str) -> DiagnosisResult:
     )
 
 
-def make_llm_react(temperature: float = 0.0) -> Callable[[str], DiagnosisResult]:
+def make_llm_react(temperature: float = 0.0, risk_guard: bool = False) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the LLM ReAct agent (needs GROQ_API_KEY; responses are disk-cached)."""
     from incident_agent.agents.llm_react_agent import LLMReActAgent
     from incident_agent.llm import TrackingClient, build_client
@@ -215,7 +215,7 @@ def make_llm_react(temperature: float = 0.0) -> Callable[[str], DiagnosisResult]
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
-        agent = LLMReActAgent(client, temperature=temperature)
+        agent = LLMReActAgent(client, temperature=temperature, risk_guard=risk_guard)
         trace: dict[str, Any] = {}
         try:
             d = agent.run(incident_id)
@@ -244,7 +244,9 @@ def make_llm_react(temperature: float = 0.0) -> Callable[[str], DiagnosisResult]
     return run
 
 
-def make_llm_orchestrator(temperature: float = 0.0, parallel: bool = True) -> Callable[[str], DiagnosisResult]:
+def make_llm_orchestrator(
+    temperature: float = 0.0, parallel: bool = True, risk_guard: bool = False
+) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the LLM orchestrator-workers system (same scoring, same accounting)."""
     from incident_agent.agents.llm_orchestrator import LLMOrchestrator
     from incident_agent.llm import TrackingClient, build_client
@@ -253,7 +255,7 @@ def make_llm_orchestrator(temperature: float = 0.0, parallel: bool = True) -> Ca
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
-        agent = LLMOrchestrator(client, temperature=temperature, parallel=parallel)
+        agent = LLMOrchestrator(client, temperature=temperature, parallel=parallel, risk_guard=risk_guard)
         try:
             d = agent.run(incident_id)
         except Exception as exc:
@@ -280,7 +282,9 @@ def make_llm_orchestrator(temperature: float = 0.0, parallel: bool = True) -> Ca
     return run
 
 
-def make_llm_swarm(temperature: float = 0.0, allow_revision: bool = True) -> Callable[[str], DiagnosisResult]:
+def make_llm_swarm(
+    temperature: float = 0.0, allow_revision: bool = True, risk_guard: bool = False
+) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the hierarchical swarm (commander over orchestrator over workers)."""
     from incident_agent.agents.swarm import HierarchicalSwarm
     from incident_agent.llm import TrackingClient, build_client
@@ -289,7 +293,7 @@ def make_llm_swarm(temperature: float = 0.0, allow_revision: bool = True) -> Cal
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
-        agent = HierarchicalSwarm(client, temperature=temperature, allow_revision=allow_revision)
+        agent = HierarchicalSwarm(client, temperature=temperature, allow_revision=allow_revision, risk_guard=risk_guard)
         try:
             out = agent.run(incident_id)
         except Exception as exc:
@@ -348,17 +352,17 @@ def _agent_trace(agent: Any) -> dict[str, Any]:
 ADAPTER_NAMES = ("react_baseline", "llm_react", "llm_orchestrator", "llm_swarm", "llm_swarm_norevise")
 
 
-def make_adapter(name: str, temperature: float = 0.0) -> Callable[[str], DiagnosisResult]:
+def make_adapter(name: str, temperature: float = 0.0, risk_guard: bool = False) -> Callable[[str], DiagnosisResult]:
     if name == "react_baseline":
         return react_baseline
     if name == "llm_react":
-        return make_llm_react(temperature)
+        return make_llm_react(temperature, risk_guard)
     if name == "llm_orchestrator":
-        return make_llm_orchestrator(temperature)
+        return make_llm_orchestrator(temperature, risk_guard=risk_guard)
     if name == "llm_swarm":
-        return make_llm_swarm(temperature)
+        return make_llm_swarm(temperature, risk_guard=risk_guard)
     if name == "llm_swarm_norevise":  # ablation: commander writes narrative/severity/escalation, cannot revise
-        return make_llm_swarm(temperature, allow_revision=False)
+        return make_llm_swarm(temperature, allow_revision=False, risk_guard=risk_guard)
     raise ValueError(f"unknown agent {name!r}; choose from {ADAPTER_NAMES}")
 
 
@@ -394,6 +398,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tag", default=None, help="label for the run; result goes to <agent>__<tag>.json")
     ap.add_argument("--trace", action="store_true", help="save per-incident traces under eval/traces/")
     ap.add_argument("--temperature", type=float, default=0.0)
+    ap.add_argument(
+        "--risk-guard",
+        action="store_true",
+        help="raise (never lower) the risk tier when the recommendation names a restart/rollback/scale/etc. "
+        "Post-processing only: re-uses cached LLM responses, so it costs no API calls",
+    )
     ap.add_argument("--resume", action="store_true", help="skip incidents already finished in the result file")
     args = ap.parse_args(argv)
 
@@ -415,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         "tag": args.tag,
         "split": "ids" if args.ids else args.split,
         "temperature": args.temperature,
+        "risk_guard": args.risk_guard,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     done: dict[str, IncidentScore] = {}
@@ -424,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
                 done[row["incident_id"]] = IncidentScore(**row)
         print(f"resuming: {len(done)} incident(s) already finished")
 
-    diagnose = make_adapter(args.agent, args.temperature)
+    diagnose = make_adapter(args.agent, args.temperature, args.risk_guard)
     trace_dir = TRACE_DIR / (args.tag or args.agent)
     scores_so_far: list[IncidentScore] = list(done.values())
 

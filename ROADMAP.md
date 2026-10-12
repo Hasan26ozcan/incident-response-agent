@@ -1,23 +1,28 @@
 # Roadmap — 23 Stages, 8 Phases
 
+> Status lines are honest: "done" only for stages that need no measurement; AI stages count as done only once measured on the gold set (`docs/RESULTS.md`).
+
 Each stage exists to prove exactly one thing. Phases group stages so the
 big picture stays visible.
 
 ## Phase A — Foundations & Spec (Stage 0–2)
 
-**Stage 0 — Spec & Architecture (OpenSpec)**
+**Stage 0 — Spec & Architecture (OpenSpec)**  
+*Status: done.*
 Scope, agent responsibility matrix, and risk classification (low / medium /
 high risk actions) via an OpenSpec proposal. Includes a short comparison
 note on BMAD-METHOD vs Spec Kit (interview prep).
 *Output:* `openspec/` directory with an approved proposal.
 
-**Stage 1 — Synthetic Incident Dataset**
+**Stage 1 — Synthetic Incident Dataset**  
+*Status: done.*
 15–20 synthetic incident scenarios (CPU/memory exhaustion, cascading
 failure, bad deploy, DB connection-pool exhaustion, etc.), plus a gold
 eval set and rubric.
 *Output:* dataset + evaluation criteria.
 
-**Stage 2 — Repo Skeleton & CI Baseline**
+**Stage 2 — Repo Skeleton & CI Baseline**  
+*Status: done.*
 Project structure, dependency management, ruff/bandit/mypy CI set up from
 the start (not bolted on later). Sandboxed execution environment
 (isolated Docker container).
@@ -25,50 +30,60 @@ the start (not bolted on later). Sandboxed execution environment
 
 ## Phase B — Agent Fundamentals (Stage 3–5)
 
-**Stage 3 — Single-Agent Skeleton (ReAct)**
+**Stage 3 — Single-Agent Skeleton (ReAct)**  
+*Status: implemented (LLM), measurement pending.*
 ReAct loop, basic log reading/diagnosis.
 *Output:* single-agent CLI prototype.
 
-**Stage 4 — Structured Output & Prompt Engineering**
+**Stage 4 — Structured Output & Prompt Engineering**  
+*Status: implemented, measurement pending.*
 Agent outputs strictly validated via Pydantic schemas + JSON mode/grammars.
 Few-shot examples and disciplined system-prompt templating established.
 *Output:* schema validation test suite, prompt library.
 
-**Stage 5 — Dynamic Planning & Error Recovery** ✅
+**Stage 5 — Dynamic Planning & Error Recovery**  
+*Status: implemented, behaviourally tested.*
 Replanning loop when a step fails (rebuild the plan from feedback).
 *Output:* test showing recovery from a deliberately injected failure.
 
 ## Phase C — Multi-Agent Architecture (Stage 6–9)
 
-**Stage 6 — Orchestrator–Workers**
+**Stage 6 — Orchestrator–Workers**  
+*Status: implemented (LLM), ablation pending.*
 Triage agent + parallel specialist agents (logs / metrics / deploy
 history). State management via LangGraph.
 *Output:* parallel worker agents processing a single synthetic incident.
 
-**Stage 7 — Hierarchical Swarm**
+**Stage 7 — Hierarchical Swarm**  
+*Status: implemented (LLM), ablation pending.*
 Incident Commander agent added; synthesizes workers' findings.
 *Output:* end-to-end diagnosis flow (no actions yet).
 
-**Stage 8 — Debate Mechanism** ✅
+**Stage 8 — Debate Mechanism**  
+*Status: legacy rule-based code, not yet audited.*
 Root-cause agent vs. "forensic examiner" agent debate.
 *Output:* before/after false-positive rate comparison.
 
-**Stage 9 — Tree-of-Thought + Plan-and-Solve** ✅
+**Stage 9 — Tree-of-Thought + Plan-and-Solve**  
+*Status: legacy rule-based code, not yet audited.*
 Parallel hypothesis branching on complex scenarios; most likely scenario
 selected.
 *Output:* measurable accuracy improvement on the gold set.
 
 ## Phase D — Memory & Retrieval (Stage 10–12)
 
-**Stage 10 — Vector DB & Hybrid Retrieval**
+**Stage 10 — Vector DB & Hybrid Retrieval**  
+*Status: legacy code, not yet audited.*
 Qdrant setup, BM25 + dense + RRF (carrying over prior ARAP experience).
 *Output:* working hybrid search layer.
 
-**Stage 11 — Reranking**
+**Stage 11 — Reranking**  
+*Status: legacy code, not yet audited.*
 Cross-encoder reranker added; retrieval quality measured.
 *Output:* before/after relevance comparison report.
 
-**Stage 12 — Episodic Memory & Self-Improvement (Hermes-style)**
+**Stage 12 — Episodic Memory & Self-Improvement (Hermes-style)**  
+*Status: legacy code, not yet audited.*
 Every resolved incident is written up as a post-mortem, embedded, and
 added to memory. Reflection loop flags misdiagnoses and updates strategy.
 *Output:* measurable improvement (time/accuracy) on second encounter.

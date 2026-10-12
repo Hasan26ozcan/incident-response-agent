@@ -54,7 +54,7 @@ jobs:
 
       - name: Trivy scan of project Dockerfiles (fs)
         # trivy-action is a *scanner*, not an installer: give it an explicit target.
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: docker/
@@ -82,7 +82,7 @@ jobs:
             && exit 1 || echo "network correctly unreachable"
 
       - name: Trivy scan on sandbox image
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           trivy-version: 'v0.59'
           image-ref: 'incident-agent-sandbox:ci'

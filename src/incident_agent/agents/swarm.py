@@ -26,15 +26,19 @@ class HierarchicalSwarm:
         allow_revision: bool = True,
         temperature: float = 0.0,
         confidence_threshold: float = 0.7,
+        risk_guard: bool = False,
         **orchestrator_kwargs: Any,
     ) -> None:
         self.client = client
-        self.orchestrator = LLMOrchestrator(client, temperature=temperature, **orchestrator_kwargs)
+        self.orchestrator = LLMOrchestrator(
+            client, temperature=temperature, risk_guard=risk_guard, **orchestrator_kwargs
+        )
         self.commander = LLMIncidentCommander(
             client,
             allow_revision=allow_revision,
             confidence_threshold=confidence_threshold,
             temperature=temperature,
+            risk_guard=risk_guard,
         )
         self.result: CommanderResult | None = None
 
