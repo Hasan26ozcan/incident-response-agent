@@ -1,5 +1,6 @@
 {
-  "_note": "Frozen dev/test split (stratified by category/difficulty). Tune ONLY on dev. Open test only at milestones; every open is logged in eval/test_openings.log. Do not edit after first commit.",
-  "dev":  ["INC-001", "INC-002", "INC-003", "INC-005", "INC-007", "INC-008", "INC-010", "INC-012", "INC-015", "INC-019"],
-  "test": ["INC-004", "INC-006", "INC-009", "INC-011", "INC-013", "INC-014", "INC-016", "INC-017", "INC-018", "INC-020"]
+  "_note": "Frozen dev/test split (stratified by category/difficulty). Tune ONLY on dev. Open test only at milestones; every open is logged in eval/test_openings.log. Do not edit once measurements exist; v2 was added before any.",
+  "_history": "v2 (before any measurement): added INC-021..028 (4 hard false alarms + 4 false-negative traps), balanced 4/4 across dev and test. INC-001..020 and their split membership are unchanged.",
+  "dev": ["INC-001", "INC-002", "INC-003", "INC-005", "INC-007", "INC-008", "INC-010", "INC-012", "INC-015", "INC-019", "INC-021", "INC-022", "INC-025", "INC-026"],
+  "test": ["INC-004", "INC-006", "INC-009", "INC-011", "INC-013", "INC-014", "INC-016", "INC-017", "INC-018", "INC-020", "INC-023", "INC-024", "INC-027", "INC-028"]
 }

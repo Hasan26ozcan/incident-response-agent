@@ -60,7 +60,7 @@ Incident Commander agent added; synthesizes workers' findings.
 *Output:* end-to-end diagnosis flow (no actions yet).
 
 **Stage 8 — Debate Mechanism**  
-*Status: legacy rule-based code, not yet audited.*
+*Status: implemented (LLM), ablation pending; legacy deterministic version retired from the LLM line.*
 Root-cause agent vs. "forensic examiner" agent debate.
 *Output:* before/after false-positive rate comparison.
 

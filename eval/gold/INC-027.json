@@ -1,0 +1,22 @@
+{
+  "root_cause": "A real, partial failure after a credential rotation: one of three auth-proxy pods (auth-proxy-2) still presents the old, now-revoked billing-api credential, so about 3% of requests fail with 401 while the other pods are healthy.",
+  "evidence": [
+    "metric:error_rate_percent steps from about 0.3% to about 3.5% at minute 25, shortly after the rotation, and stays there; latency is normal",
+    "log: repeated '401 Unauthorized from downstream billing-api (pod auth-proxy-2): credential rejected'",
+    "deploy: credential rotation recorded just before the window as rolled out to only 2 of 3 pods"
+  ],
+  "recommended_remediation": "Re-sync the rotated credential to the stale pod auth-proxy-2 and restart it so it mounts the new secret.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Touching credentials/secrets and restarting a production pod are explicit high-risk actions.",
+  "incident_id": "INC-027",
+  "title": "partial secret rotation low error rate",
+  "category": "partial_secret_rotation",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "False-negative trap: a 3% error rate, normal latency and a sparse error log look like noise, but the failures are persistent, localized to one pod and tied to the rotation.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

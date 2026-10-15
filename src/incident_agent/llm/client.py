@@ -1,7 +1,7 @@
 """Provider-agnostic LLM client (Stage 3-5 foundation).
 
 One narrow interface (``LLMClient.chat``) so agents never import a vendor SDK.
-Groq, Cerebras and Gemini all expose OpenAI-compatible endpoints, so a single
+Groq, Cerebras, Mistral and Gemini all expose OpenAI-compatible endpoints, so a single
 ``OpenAICompatClient`` covers them; ``FallbackClient`` rolls over to the next
 provider when one is rate-limited, which matters on free tiers.
 
@@ -15,6 +15,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -25,6 +28,9 @@ from incident_agent.llm.schema import flatten_schema
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
+MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
+PROVIDER_NAMES = ("groq", "cerebras", "mistral")
+MISTRAL_DEFAULT_INTERVAL = 1.1  # free tier allows 1 request per second
 
 
 class LLMUnavailable(RuntimeError):
@@ -94,17 +100,35 @@ class OpenAICompatClient:
         base_url: str,
         max_retries: int = 5,
         http_client: Any = None,
+        min_interval: float = 0.0,
+        sleep: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         from openai import OpenAI
 
         self.model = model
+        self.min_interval = min_interval  # client-side pacing for providers with a requests-per-second cap
+        self._sleep = sleep
+        self._clock = clock
+        self._pace_lock = threading.Lock()
+        self._next_slot = 0.0
         self._json_object_mode = False  # flips to True once the provider rejects json_schema
         self._client = OpenAI(api_key=api_key, base_url=base_url, max_retries=max_retries, http_client=http_client)
+
+    def _throttle(self) -> None:
+        """Space requests at least ``min_interval`` apart; safe across threads (parallel workers)."""
+        with self._pace_lock:
+            now = self._clock()
+            start = max(now, self._next_slot)
+            self._next_slot = start + self.min_interval
+        if start > now:
+            self._sleep(start - now)
 
     def _create(self, kwargs: dict[str, Any]) -> Any:
         """One provider call with permanent/transient errors mapped to our exception types."""
         import openai
 
+        self._throttle()
         try:
             return self._client.chat.completions.create(**kwargs)
         except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as exc:
@@ -243,25 +267,58 @@ def _load_dotenv(path: Path | None = None) -> None:
                 os.environ.setdefault(key, value)
 
 
+def _provider_client(name: str, explicit: bool) -> LLMClient | None:
+    """Build one provider client from the environment; None when it is not configured.
+
+    When the provider was requested explicitly (``LLM_PROVIDERS``) a missing key or model is an error, not a
+    silent skip, so a typo can never make a run quietly use another provider.
+    """
+    env = os.environ
+    key = env.get(f"{name.upper()}_API_KEY")
+    model = env.get("GROQ_MODEL", "openai/gpt-oss-120b") if name == "groq" else env.get(f"{name.upper()}_MODEL")
+    if not key or not model:
+        if explicit:
+            raise LLMConfigError(
+                f"LLM_PROVIDERS names '{name}' but {name.upper()}_API_KEY or {name.upper()}_MODEL is not set"
+            )
+        return None
+    if name == "groq":
+        return OpenAICompatClient(model, key, GROQ_BASE_URL)
+    if name == "cerebras":
+        return OpenAICompatClient(model, key, CEREBRAS_BASE_URL)
+    raw = env.get("MISTRAL_MIN_INTERVAL", str(MISTRAL_DEFAULT_INTERVAL))
+    try:
+        interval = float(raw)
+    except ValueError as exc:
+        raise LLMConfigError(f"MISTRAL_MIN_INTERVAL must be a number of seconds, got {raw!r}") from exc
+    return OpenAICompatClient(model, key, MISTRAL_BASE_URL, min_interval=max(0.0, interval))
+
+
 def build_client(cache_dir: str | None = None) -> LLMClient:
     """Build the default client from environment variables.
 
-    GROQ_API_KEY (+ optional GROQ_MODEL) is primary. CEREBRAS_API_KEY with
-    CEREBRAS_MODEL adds a fallback. Model ids change often on free tiers, so
-    verify them in each provider's console before relying on the defaults.
+    Providers are tried in this order: Groq (GROQ_API_KEY, optional GROQ_MODEL), Cerebras (CEREBRAS_API_KEY +
+    CEREBRAS_MODEL), Mistral (MISTRAL_API_KEY + MISTRAL_MODEL; paced to its 1 request/second free tier). More than
+    one configured provider means automatic fallback. ``LLM_PROVIDERS`` (comma separated, e.g. ``mistral``)
+    selects exactly those providers in that order; use it so an exhausted provider is not tried first. Model ids
+    change often on free tiers, so verify them in each provider's console before relying on the defaults.
     """
     from incident_agent.llm.cache import CachedClient
 
     _load_dotenv()
+    requested = [p.strip().lower() for p in os.environ.get("LLM_PROVIDERS", "").split(",") if p.strip()]
+    unknown = [p for p in requested if p not in PROVIDER_NAMES]
+    if unknown:
+        raise LLMConfigError(f"LLM_PROVIDERS has unknown provider(s) {unknown}; valid: {', '.join(PROVIDER_NAMES)}")
     clients: list[LLMClient] = []
-    if key := os.environ.get("GROQ_API_KEY"):
-        clients.append(OpenAICompatClient(os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"), key, GROQ_BASE_URL))
-    if (key := os.environ.get("CEREBRAS_API_KEY")) and (model := os.environ.get("CEREBRAS_MODEL")):
-        clients.append(OpenAICompatClient(model, key, CEREBRAS_BASE_URL))
+    for name in dict.fromkeys(requested or PROVIDER_NAMES):
+        if (client := _provider_client(name, explicit=bool(requested))) is not None:
+            clients.append(client)
     if not clients:
         searched = ", ".join(str(path) for path in _dotenv_candidates())
         raise LLMUnavailable(
-            "GROQ_API_KEY not found. Add GROQ_API_KEY=your_key to .env or set it in the environment. "
+            "GROQ_API_KEY not found (or CEREBRAS_API_KEY + CEREBRAS_MODEL, or MISTRAL_API_KEY + MISTRAL_MODEL). "
+            "Add it to .env or set it in the environment. "
             f"Looked for .env in: {searched}. Check that the file is named exactly .env (not .env.txt) "
             "and the key value is not empty."
         )

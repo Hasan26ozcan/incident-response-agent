@@ -24,6 +24,14 @@ Human-readable index over `eval/gold/*.json`, generated from the same data `data
 | INC-018 | n plus one query cart service | n_plus_one_query | medium | cart-service, orders-db | — | — | high | 6, 8, 19 |
 | INC-019 | false alarm noisy cpu threshold | false_alarm | easy | search-service | yes | — | low | 6, 8, 19, 20 |
 | INC-020 | memory leak oom notifications recurrence | memory_leak | medium | notifications-service | — | INC-002 | high | 12, 19 |
+| INC-021 | false alarm planned node drain | false_alarm_maintenance | medium | inventory-service | yes | — | low | 8, 19 |
+| INC-022 | false alarm nightly batch reindex | false_alarm_batch | medium | search-indexer | yes | — | low | 8, 19 |
+| INC-023 | false alarm metrics exporter sentinel | false_alarm_exporter | hard | ledger-service | yes | — | low | 8, 19, 20 |
+| INC-024 | false alarm approved load test | false_alarm_loadtest | medium | catalog-api | yes | — | low | 8, 19 |
+| INC-025 | slow burn memory leak no errors | slow_memory_leak | hard | reporting-service | — | — | high | 8, 19 |
+| INC-026 | post maintenance config regression | post_maintenance_regression | hard | orders-api | — | — | medium | 8, 19 |
+| INC-027 | partial secret rotation low error rate | partial_secret_rotation | hard | auth-proxy | — | — | high | 8, 19 |
+| INC-028 | consumer stall hidden by batch job | consumer_stall_during_batch | hard | email-worker | — | — | high | 8, 19 |
 
 ## Distractor / debate-test pairs
 
@@ -41,3 +49,16 @@ Human-readable index over `eval/gold/*.json`, generated from the same data `data
 ## False alarm (Stage 8/20 test)
 
 INC-019 has no real anomaly — a single transient metric blip with an otherwise clean log stream. See `eval/rubric.md` §5 for the false-positive-handling hard gate this exists to test.
+
+## Dataset v2 (INC-021..028): Stage 8 false-positive / false-negative set
+
+Added before any measurement. INC-001..020 are byte-identical to v1 (pinned by `tests/dataset_v1_hashes.json`).
+
+| False alarm (explained by the data) | Real incident that looks harmless (twin) |
+|---|---|
+| INC-021 planned node drain (change record + log events, signals recover) | INC-026 post-maintenance config regression (errors start after the window, never recover) |
+| INC-022 nightly batch reindex (scheduled job, signals recover) | INC-028 consumer stall hidden by a batch job (consumption drops to 0, queue never drains) |
+| INC-023 metrics-exporter sentinel (5000 ms artefact, logs show normal latency) | INC-027 partial secret rotation (3% 401s on one pod, normal latency) |
+| INC-024 approved load test (7x traffic, documented, recovers) | INC-025 slow-burn memory leak (no ERROR lines, CPU normal) |
+
+A debate that only removes false positives is not enough: the right-hand column measures whether it also dismisses real incidents (false-negative rate).

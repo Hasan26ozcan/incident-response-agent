@@ -5,12 +5,12 @@ Set `GROQ_API_KEY` in `.env` (never commit it) and `GROQ_MODEL` to the model you
 
 ## 0. Ground rules
 
-* Develop and tune on the **dev** split only (INC-001, 002, 003, 005, 007, 008, 010, 012, 015, 019).
-* The **test** split (004, 006, 009, 011, 013, 014, 016, 017, 018, 020) is opened only at milestones.
+* Develop and tune on the **dev** split only (INC-001, 002, 003, 005, 007, 008, 010, 012, 015, 019, 021, 022, 025, 026).
+* The **test** split (004, 006, 009, 011, 013, 014, 016, 017, 018, 020, 023, 024, 027, 028) is opened only at milestones.
   Every opening is appended to `eval/test_openings.log`. Do not tune on it.
 * Every run gets a `--tag`. Results land in `eval/results/<agent>__<tag>.json`; `--trace` also
   saves per-incident traces in `eval/traces/<tag>/`.
-* n = 10 per split is small: treat differences below the bootstrap CI as noise.
+* n = 14 per split is small: treat differences below the bootstrap CI as noise.
 
 ## 1. Preflight (free, ~3 calls)
 
@@ -43,6 +43,22 @@ python -m incident_agent.eval.harness --agent llm_swarm --split dev --tag s7_swa
 python -m incident_agent.eval.compare llm_orchestrator__s6_orch llm_swarm_norevise__s7_norev llm_swarm__s7_swarm
 ```
 
+## 4b. Stage 8 ablation (debate before/after, false positives and false negatives)
+
+The dataset now has 28 incidents (dev 14, test 14); run the earlier steps again on the new dev split if you
+measured before updating (tags are cheap). Orchestrator calls are cached, so the debate run only pays for the
+debate itself.
+
+```powershell
+python -m incident_agent.eval.harness --agent llm_orchestrator --split dev --tag s8_base --trace
+python -m incident_agent.eval.harness --agent llm_debate --split dev --tag s8_debate --trace
+python -m incident_agent.eval.compare llm_orchestrator__s8_base llm_debate__s8_debate
+python -m incident_agent.eval.harness --agent llm_swarm_debate --split dev --tag s8_swarm_debate --trace
+```
+Read the FP/FN block first: the debate is only worth keeping if false positives drop and false negatives do
+not rise. Traces (`eval/traces/s8_debate/INC-xxx.json`, key `debate`) show every challenge, rebuttal, the arbiter
+ruling, discarded challenges and notes for each incident.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only
@@ -70,6 +86,7 @@ Numbers not produced by a run do not belong there.
 
 ## Metrics
 
-root_cause_f1, evidence_recall, risk_accuracy, false_alarm_accuracy, answered_rate, crashed, degraded,
+root_cause_f1, evidence_recall, risk_accuracy, false_alarm_accuracy, false_positive_rate, false_negative_rate,
+answered_rate, crashed, degraded,
 llm_calls, prompt/completion tokens. `compare` adds paired-bootstrap 95% CIs (seed 0, 10 000 resamples),
 win/loss/tie counts and the cost multiple versus the first run.

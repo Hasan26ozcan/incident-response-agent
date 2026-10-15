@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T22:00:00+00:00",
+    "service": "inventory-service",
+    "version": "maint-CHG-4821",
+    "description": "PLANNED MAINTENANCE CHG-4821 (approved window 00:18-00:32): rolling node drain of node pool b for kernel patching; no application change"
+  }
+]

@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:00:00+00:00",
+    "service": "metrics-exporter",
+    "version": "0.18.3",
+    "description": "Scheduled sidecar upgrade of the metrics exporter (0.18.2 -> 0.18.3), planned for 00:25-00:31; ledger-service itself is unchanged"
+  }
+]

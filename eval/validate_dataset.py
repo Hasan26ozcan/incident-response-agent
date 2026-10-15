@@ -9,7 +9,8 @@ Checks:
      files are present, and every JSON file parses.
   2. No gold-spoiler text (category name, "root_cause") leaks into the
      agent-visible meta.json.
-  3. Scenarios flagged is_false_alarm have zero ERROR/WARN log lines.
+  3. Scenarios flagged is_false_alarm have zero ERROR lines, and WARN lines only when the gold sets
+     benign_warnings=true (dataset v2: documented, expected warnings).
   4. No metric series is empty.
   5. Every eval/gold/<id>.json has a matching data/incidents/<id>/ directory
      and vice versa (no orphans in either direction).
@@ -26,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 INCIDENTS_DIR = ROOT / "data" / "incidents"
 GOLD_DIR = ROOT / "eval" / "gold"
-EXPECTED_COUNT = 20
+EXPECTED_COUNT = 28
 
 
 def main():
@@ -81,8 +82,10 @@ def main():
         # Check 3: false-alarm cleanliness
         logs = (d / "logs.log").read_text()
         if gold.get("is_false_alarm"):
-            if "level=ERROR" in logs or "level=WARN" in logs:
-                problems.append(f"{iid}: flagged is_false_alarm but logs.log contains ERROR/WARN lines")
+            if "level=ERROR" in logs:
+                problems.append(f"{iid}: flagged is_false_alarm but logs.log contains ERROR lines")
+            if "level=WARN" in logs and not gold.get("benign_warnings"):
+                problems.append(f"{iid}: false alarm has WARN lines but gold lacks benign_warnings=true")
 
         # Check 4: non-empty metrics
         for k, v in metrics.items():

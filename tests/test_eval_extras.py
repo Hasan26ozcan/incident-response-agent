@@ -452,3 +452,54 @@ class TestPreflight:
 
 def test_commander_review_schema_untouched_by_guard():  # guard must not change the LLM-facing schemas
     assert "revised" in CommanderReview.model_json_schema()["properties"]
+
+
+# --------------------------------------------------------------------------- Stage 8: FP / FN comparison
+def _fa_run(name: str, calls: dict[str, tuple[bool, bool]]) -> compare.Run:
+    """calls: incident -> (gold_false_alarm, claimed_false_alarm)."""
+    run = _report(name, dict.fromkeys(calls, 0.5))
+    for row in run.report["incidents"]:
+        row["gold_false_alarm"], row["claimed_false_alarm"] = calls[row["incident_id"]]
+    return run
+
+
+class TestFalseAlarmComparison:
+    BEFORE = {
+        "INC-019": (True, False),  # false positive
+        "INC-021": (True, True),
+        "INC-025": (False, False),
+        "INC-026": (False, True),  # false negative
+    }
+    AFTER = {
+        "INC-019": (True, True),  # fixed FP
+        "INC-021": (True, False),  # new FP
+        "INC-025": (False, True),  # new FN
+        "INC-026": (False, False),  # fixed FN
+    }
+
+    def test_counts(self):
+        assert compare.fp_fn_counts(_fa_run("a", self.BEFORE)) == (1, 2, 1, 2)
+        assert compare.fp_fn_counts(_fa_run("b", self.AFTER)) == (1, 2, 1, 2)
+
+    def test_counts_are_none_for_old_result_files(self):
+        assert compare.fp_fn_counts(_report("a", {"INC-001": 0.5})) is None
+
+    def test_flips_name_exactly_which_incidents_changed(self):
+        fl = compare.error_flips(_fa_run("a", self.BEFORE), _fa_run("b", self.AFTER))
+        assert fl == {
+            "fixed_fp": ["INC-019"],
+            "new_fp": ["INC-021"],
+            "fixed_fn": ["INC-026"],
+            "new_fn": ["INC-025"],
+        }
+
+    def test_flips_ignore_incidents_missing_from_either_run(self):
+        a = _fa_run("a", {"INC-019": (True, False)})
+        b = _fa_run("b", {"INC-021": (True, True)})
+        assert compare.error_flips(a, b) == {"fixed_fp": [], "new_fp": [], "fixed_fn": [], "new_fn": []}
+
+    def test_render_prints_the_before_after_section_only_when_available(self):
+        text = compare.render([_fa_run("a", self.BEFORE), _fa_run("b", self.AFTER)])
+        assert "FP 1/2" in text and "FN 1/2" in text and "new FP ['INC-021']" in text and "fixed FP ['INC-019']" in text
+        old = compare.render([_report("a", {"INC-001": 0.5}), _report("b", {"INC-001": 0.6})])
+        assert "false positives" not in old

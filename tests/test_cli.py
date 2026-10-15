@@ -50,6 +50,8 @@ import pytest  # noqa: E402
         ("llm", "incident_agent.agents.llm_react_agent.LLMReActAgent"),
         ("orchestrator", "incident_agent.agents.llm_orchestrator.LLMOrchestrator"),
         ("swarm", "incident_agent.agents.swarm.HierarchicalSwarm"),
+        ("debate", "incident_agent.agents.llm_debate.DebatedOrchestrator"),
+        ("swarm-debate", "incident_agent.agents.swarm.HierarchicalSwarm"),
     ],
 )
 def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, capsys, mode, target) -> None:
@@ -61,8 +63,9 @@ def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, caps
             return f"report-{mode}"
 
     class Fake:
-        def __init__(self, client, risk_guard=False) -> None:
+        def __init__(self, client, risk_guard=False, debate=False) -> None:
             seen["guard"] = risk_guard
+            seen["debate"] = debate
 
         def run(self, incident_id: str) -> Out:
             return Out()
@@ -72,6 +75,7 @@ def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, caps
     assert cli._cmd_diagnose(["INC-001", "--agent", mode, "--risk-guard"]) == 0
     assert capsys.readouterr().out == f"report-{mode}\n"
     assert seen["guard"] is True
+    assert seen.get("debate", False) is (mode == "swarm-debate")
 
 
 def test_diagnose_legacy_agent_needs_no_llm(monkeypatch, capsys) -> None:

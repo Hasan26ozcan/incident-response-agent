@@ -35,7 +35,10 @@ def main(argv: list[str] | None = None) -> int:
 def _cmd_diagnose(args: list[str]) -> int:
     """Run the ReAct agent against a single incident."""
     if not args:
-        print("Usage: incident-agent diagnose <INC-ID> [--agent llm|orchestrator|swarm|legacy] [--risk-guard]")
+        print(
+            "Usage: incident-agent diagnose <INC-ID> "
+            "[--agent llm|orchestrator|debate|swarm|swarm-debate|legacy] [--risk-guard]"
+        )
         print("Example: incident-agent diagnose INC-001")
         return 1
 
@@ -45,7 +48,7 @@ def _cmd_diagnose(args: list[str]) -> int:
     if "--agent" in args:
         mode = args[args.index("--agent") + 1]
     guard = "--risk-guard" in args
-    if mode in ("llm", "orchestrator", "swarm"):
+    if mode in ("llm", "orchestrator", "debate", "swarm", "swarm-debate"):
         from incident_agent.llm import build_client
 
         try:
@@ -58,10 +61,14 @@ def _cmd_diagnose(args: list[str]) -> int:
                 from incident_agent.agents.llm_orchestrator import LLMOrchestrator
 
                 diagnosis = LLMOrchestrator(client, risk_guard=guard).run(incident_id)
+            elif mode == "debate":
+                from incident_agent.agents.llm_debate import DebatedOrchestrator
+
+                diagnosis = DebatedOrchestrator(client, risk_guard=guard).run(incident_id)
             else:
                 from incident_agent.agents.swarm import HierarchicalSwarm
 
-                diagnosis = HierarchicalSwarm(client, risk_guard=guard).run(incident_id)
+                diagnosis = HierarchicalSwarm(client, risk_guard=guard, debate=mode == "swarm-debate").run(incident_id)
         except LLMUnavailable as exc:
             print(f"LLM unavailable: {exc}", file=sys.stderr)
             return 1

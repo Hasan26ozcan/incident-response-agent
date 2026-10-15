@@ -81,6 +81,9 @@ class IncidentScore:
     error: str = ""  # non-empty when the agent crashed on this incident
     usage: dict[str, int] = field(default_factory=dict)
     degraded: str = ""
+    gold_false_alarm: bool = False
+    claimed_false_alarm: bool = False
+    debate_verdict: str = ""  # Stage 8 runs only: confirmed / revised / revision_rejected / no_challenges / ...
 
 
 def _tokens(text: str) -> set[str]:
@@ -126,11 +129,20 @@ def score_one(gold: dict, result: DiagnosisResult, error: str = "") -> IncidentS
         error=error or result.error,
         usage=result.usage,
         degraded=result.degraded,
+        gold_false_alarm=is_fa,
+        claimed_false_alarm=claims_false_alarm,
+        debate_verdict=str(result.trace.get("debate", {}).get("verdict", "")),
     )
+
+
+def _rate(hits: int, total: int) -> float | None:
+    return round(hits / total, 3) if total else None
 
 
 def summarize(scores: list[IncidentScore]) -> dict[str, Any]:
     n = len(scores) or 1
+    gold_fa = [s for s in scores if s.gold_false_alarm]
+    gold_real = [s for s in scores if not s.gold_false_alarm]
     return {
         "n": len(scores),
         "root_cause_f1": round(sum(s.root_cause_f1 for s in scores) / n, 3),
@@ -138,6 +150,13 @@ def summarize(scores: list[IncidentScore]) -> dict[str, Any]:
         "risk_accuracy": round(sum(s.risk_match for s in scores) / n, 3),
         "false_alarm_accuracy": round(sum(s.false_alarm_ok for s in scores) / n, 3),
         "answered_rate": round(sum(s.answered for s in scores) / n, 3),
+        # Stage 8: false positive = a real-incident claim on a gold false alarm; false negative = a false-alarm
+        # claim on a real incident. None when the run has no incident of that kind (rate undefined).
+        "false_positive_rate": _rate(sum(not s.claimed_false_alarm for s in gold_fa), len(gold_fa)),
+        "false_negative_rate": _rate(sum(s.claimed_false_alarm for s in gold_real), len(gold_real)),
+        "gold_false_alarms": len(gold_fa),
+        "debate_revised": sum(s.debate_verdict == "revised" for s in scores),
+        "debate_rejected": sum(s.debate_verdict == "revision_rejected" for s in scores),
         "crashed": sum(bool(s.error) for s in scores),
         "degraded": sum(bool(s.degraded) for s in scores),
         "llm_calls": sum(s.usage.get("calls", 0) for s in scores),
@@ -283,7 +302,7 @@ def make_llm_orchestrator(
 
 
 def make_llm_swarm(
-    temperature: float = 0.0, allow_revision: bool = True, risk_guard: bool = False
+    temperature: float = 0.0, allow_revision: bool = True, risk_guard: bool = False, debate: bool = False
 ) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the hierarchical swarm (commander over orchestrator over workers)."""
     from incident_agent.agents.swarm import HierarchicalSwarm
@@ -293,7 +312,9 @@ def make_llm_swarm(
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
-        agent = HierarchicalSwarm(client, temperature=temperature, allow_revision=allow_revision, risk_guard=risk_guard)
+        agent = HierarchicalSwarm(
+            client, temperature=temperature, allow_revision=allow_revision, risk_guard=risk_guard, debate=debate
+        )
         try:
             out = agent.run(incident_id)
         except Exception as exc:
@@ -307,6 +328,9 @@ def make_llm_swarm(
         d = out.diagnosis
         trace = _agent_trace(agent)
         trace["diagnosis"] = d.model_dump(mode="json")
+        if agent.debate_record is not None:
+            trace["debate"] = agent.debate_record.to_dict()
+            trace["debate"]["original_root_cause"] = agent.debate_record.original.root_cause
         trace["commander"] = {
             "escalation": out.escalation_decision,
             "escalation_reason": agent.result.escalation_reason if agent.result else "",
@@ -316,6 +340,47 @@ def make_llm_swarm(
             "fallback": agent.result.fallback_reason if agent.result else "",
             "confidence": out.confidence,
         }
+        return DiagnosisResult(
+            incident_id=incident_id,
+            root_cause=d.root_cause,
+            evidence=[e.detail for e in d.evidence],
+            risk_tier=d.risk_tier.value,
+            steps=len(d.reasoning_steps),
+            trace=trace,
+            usage=client.summary(),
+            degraded=agent.degraded or "",
+        )
+
+    return run
+
+
+def make_llm_debate(
+    temperature: float = 0.0, parallel: bool = True, risk_guard: bool = False
+) -> Callable[[str], DiagnosisResult]:
+    """Stage 8 adapter: orchestrator, then defender-vs-examiner debate. Re-uses cached orchestrator calls."""
+    from incident_agent.agents.llm_debate import DebatedOrchestrator
+    from incident_agent.llm import TrackingClient, build_client
+
+    shared = build_client()
+
+    def run(incident_id: str) -> DiagnosisResult:
+        client = TrackingClient(shared)
+        agent = DebatedOrchestrator(client, temperature=temperature, risk_guard=risk_guard, parallel=parallel)
+        try:
+            d = agent.run(incident_id)
+        except Exception as exc:
+            return DiagnosisResult(
+                incident_id,
+                f"Unknown (error: {exc})",
+                error=f"{type(exc).__name__}: {exc}",
+                trace=_agent_trace(agent),
+                usage=client.summary(),
+            )
+        trace = _agent_trace(agent)
+        trace["diagnosis"] = d.model_dump(mode="json")
+        if agent.record is not None:
+            trace["debate"] = agent.record.to_dict()
+            trace["debate"]["original_root_cause"] = agent.record.original.root_cause
         return DiagnosisResult(
             incident_id=incident_id,
             root_cause=d.root_cause,
@@ -349,7 +414,15 @@ def _agent_trace(agent: Any) -> dict[str, Any]:
     }
 
 
-ADAPTER_NAMES = ("react_baseline", "llm_react", "llm_orchestrator", "llm_swarm", "llm_swarm_norevise")
+ADAPTER_NAMES = (
+    "react_baseline",
+    "llm_react",
+    "llm_orchestrator",
+    "llm_swarm",
+    "llm_swarm_norevise",
+    "llm_debate",
+    "llm_swarm_debate",
+)
 
 
 def make_adapter(name: str, temperature: float = 0.0, risk_guard: bool = False) -> Callable[[str], DiagnosisResult]:
@@ -363,6 +436,10 @@ def make_adapter(name: str, temperature: float = 0.0, risk_guard: bool = False) 
         return make_llm_swarm(temperature, risk_guard=risk_guard)
     if name == "llm_swarm_norevise":  # ablation: commander writes narrative/severity/escalation, cannot revise
         return make_llm_swarm(temperature, allow_revision=False, risk_guard=risk_guard)
+    if name == "llm_debate":  # Stage 8: orchestrator + debate (compare with llm_orchestrator)
+        return make_llm_debate(temperature, risk_guard=risk_guard)
+    if name == "llm_swarm_debate":  # Stage 8 inside the swarm: commander reviews the debated diagnosis
+        return make_llm_swarm(temperature, risk_guard=risk_guard, debate=True)
     raise ValueError(f"unknown agent {name!r}; choose from {ADAPTER_NAMES}")
 
 

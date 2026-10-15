@@ -82,6 +82,38 @@ def compare_to_baseline(base: Run, other: Run, metric: str) -> dict[str, Any]:
     }
 
 
+def fp_fn_counts(run: Run) -> tuple[int, int, int, int] | None:
+    """(false positives, gold false alarms, false negatives, gold real) or None for pre-v2 result files."""
+    rows = list(run.rows.values())
+    if not rows or any("gold_false_alarm" not in r for r in rows):
+        return None
+    fa = [r for r in rows if r["gold_false_alarm"]]
+    real = [r for r in rows if not r["gold_false_alarm"]]
+    return (
+        sum(not r["claimed_false_alarm"] for r in fa),
+        len(fa),
+        sum(bool(r["claimed_false_alarm"]) for r in real),
+        len(real),
+    )
+
+
+def error_flips(base: Run, other: Run) -> dict[str, list[str]]:
+    """Incidents whose false-alarm call changed between two runs (the Stage 8 before/after comparison)."""
+    out: dict[str, list[str]] = {"fixed_fp": [], "new_fp": [], "fixed_fn": [], "new_fn": []}
+    for i in sorted(set(base.rows) & set(other.rows)):
+        b, o = base.rows[i], other.rows[i]
+        if "gold_false_alarm" not in b or "gold_false_alarm" not in o:
+            continue
+        key = "fp" if b["gold_false_alarm"] else "fn"
+        b_wrong = b["claimed_false_alarm"] != b["gold_false_alarm"]
+        o_wrong = o["claimed_false_alarm"] != o["gold_false_alarm"]
+        if b_wrong and not o_wrong:
+            out[f"fixed_{key}"].append(i)
+        elif o_wrong and not b_wrong:
+            out[f"new_{key}"].append(i)
+    return out
+
+
 def _cell(v: Any) -> str:
     return f"{v:.3f}" if isinstance(v, float) else str(v)
 
@@ -109,6 +141,15 @@ def render(runs: list[Run], markdown: bool = False) -> str:
         out.append("|" + "---|" * len(header))
     out += [line(r) for r in rows]
 
+    fa_counts = [(r.name, fp_fn_counts(r)) for r in runs]
+    has_fa = all(cnt is not None for _, cnt in fa_counts)
+    if has_fa:
+        out.append("")
+        out.append("false positives (real claim on a false alarm) / false negatives (false-alarm claim on a real one)")
+        for name, cnt in fa_counts:
+            if cnt is not None:
+                out.append(f"  {name:<40} FP {cnt[0]}/{cnt[1]}   FN {cnt[2]}/{cnt[3]}")
+
     base = runs[0]
     for other in runs[1:]:
         out.append("")
@@ -119,6 +160,13 @@ def render(runs: list[Run], markdown: bool = False) -> str:
             out.append(
                 f"  {m:<22} delta {c['mean_delta']:+.3f}  95% CI [{c['ci'][0]:+.3f}, {c['ci'][1]:+.3f}]  "
                 f"W/L/T {c['wins']}/{c['losses']}/{c['ties']}  n={c['n']}  {tag}"
+            )
+        if has_fa:
+            fl = error_flips(base, other)
+            out.append(
+                "  false-alarm calls: fixed FP "
+                f"{fl['fixed_fp'] or '-'}  new FP {fl['new_fp'] or '-'}  fixed FN {fl['fixed_fn'] or '-'}  "
+                f"new FN {fl['new_fn'] or '-'}"
             )
         calls_b, calls_o = base.report["summary"]["llm_calls"], other.report["summary"]["llm_calls"]
         if calls_b:

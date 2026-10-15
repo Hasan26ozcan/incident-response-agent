@@ -1,0 +1,23 @@
+{
+  "benign_warnings": true,
+  "root_cause": "No real incident. An approved synthetic load test (lt-0301, CHG-4830, 00:20-00:35) multiplied request volume 7x; CPU and latency rose moderately, the rate limiter engaged for the test client as designed, and everything returned to baseline when the test ended.",
+  "evidence": [
+    "log: synthetic load test lt-0301 started by perf-team at minute 20 (approved) and finished at minute 35",
+    "metric:requests_per_sec jumps from about 200 to 1400 between minute 20 and 35 then returns; CPU and latency follow and recover",
+    "log: the only WARN lines say the rate limiter engaged for the test client (expected); no ERROR lines"
+  ],
+  "recommended_remediation": "No remediation needed. Add a schedule-aware silence for approved load tests to the alert rule.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No system-touching action; only the alert rule's own configuration may be tuned.",
+  "incident_id": "INC-024",
+  "title": "false alarm approved load test",
+  "category": "false_alarm_loadtest",
+  "difficulty": "medium",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": "Hard false alarm: a large traffic surge with a latency rise looks like an overload incident; the logs show it was a documented, approved test.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

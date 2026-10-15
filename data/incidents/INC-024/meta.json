@@ -1,0 +1,15 @@
+{
+  "incident_id": "INC-024",
+  "alert_name": "Alert: anomalous behavior detected \u2014 catalog-api",
+  "services": [
+    "catalog-api"
+  ],
+  "window_start": "2026-03-01T00:00:00+00:00",
+  "window_end": "2026-03-01T01:00:00+00:00",
+  "available_metrics": [
+    "cpu_percent",
+    "latency_p99_ms",
+    "requests_per_sec"
+  ],
+  "note": "This metadata is intentionally non-spoiler: it names the services and window but not the cause."
+}

@@ -1,0 +1,23 @@
+{
+  "benign_warnings": true,
+  "root_cause": "No real incident. The nightly scheduled reindex job (00:30-00:55) caused the expected CPU and memory increase and some slow batch queries; resource usage returned to baseline when the job finished.",
+  "evidence": [
+    "log: nightly reindex job started at minute 30 (scheduled) and finished at minute 55",
+    "metric:memory_percent and metric:cpu_percent rise only while the job runs and return to baseline afterwards",
+    "log: the slow-query WARN lines are labelled as expected batch workload; there are no ERROR lines"
+  ],
+  "recommended_remediation": "No remediation needed. Add a schedule-aware silence for the nightly reindex window to the alert rule.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No system-touching action; only the alert rule's own configuration may be tuned.",
+  "incident_id": "INC-022",
+  "title": "false alarm nightly batch reindex",
+  "category": "false_alarm_batch",
+  "difficulty": "medium",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": "Hard false alarm: a sizeable, sustained resource excursion plus WARN lines, fully explained by a scheduled job visible in the logs. Twin of INC-028, where a batch job masks a real consumer stall.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

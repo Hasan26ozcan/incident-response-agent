@@ -13,14 +13,15 @@ gold set. Where a stage has not been measured yet, the table below says so.
 | Stage | What | State | Measured |
 |------:|------|-------|----------|
 | 0 | Spec & architecture (OpenSpec) | done | n/a |
-| 1 | Synthetic dataset, gold set, rubric (20 incidents) | done | n/a |
+| 1 | Synthetic dataset, gold set, rubric (28 incidents after dataset v2) | done | n/a |
 | 2 | Repo skeleton, CI (ruff, mypy, bandit, pytest, sandbox image scan) | done | n/a |
 | 3 | Single-agent ReAct (LLM, tool calling, grounding) | implemented, hardened | see `docs/RESULTS.md` |
 | 4 | Structured output (schema-validated, repair loop) | implemented, hardened | see `docs/RESULTS.md` |
 | 5 | Dynamic planning and error recovery (replan on tool failure) | implemented, hardened | n/a (behavioural tests) |
 | 6 | Orchestrator-workers (LLM triage, scoped parallel workers) | implemented | pending ablation |
 | 7 | Hierarchical swarm (commander, deterministic escalation policy) | implemented | pending ablation |
-| 8-12 | Debate, ToT, hybrid retrieval, reranking, episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
+| 8 | Debate (defender vs forensic examiner with tools, arbiter, deterministic acceptance) | implemented | pending ablation |
+| 9-12 | ToT, hybrid retrieval, reranking, episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
 | 13-22 | MCP, Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
 
 "Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).
@@ -30,7 +31,7 @@ It does **not** mean "proven better". The measured column is filled from real ru
 ## Two code lines
 
 * **LLM line (trusted, being measured):** `agents/llm_react_agent.py`, `tool_loop.py`,
-  `grounding.py`, `llm_orchestrator.py`, `llm_commander.py`, `swarm.py`, `risk_guard.py`,
+  `grounding.py`, `llm_orchestrator.py`, `llm_commander.py`, `llm_debate.py`, `swarm.py`, `risk_guard.py`,
   plus `llm/` (client, cache, fallback, structured output) and `tools/toolbox.py`.
 * **Legacy line (rule-based, kept for back-compat):** `react_agent.py`, `orchestrator.py`,
   `worker.py`, `incident_commander.py` and Stage 8-12 modules. The legacy orchestrator
@@ -48,7 +49,7 @@ python -m pytest -q
 python -m incident_agent diagnose INC-001 --agent swarm --risk-guard
 ```
 
-`--agent` accepts `llm` (single ReAct), `orchestrator`, `swarm`, `legacy`. Without
+`--agent` accepts `llm` (single ReAct), `orchestrator`, `debate`, `swarm`, `swarm-debate`, `legacy`. Without
 `--agent`, the CLI uses the LLM agent when `GROQ_API_KEY` is set, else the legacy one.
 
 ## Evaluation workflow
@@ -64,7 +65,7 @@ Short version (full runbook: [`docs/EVAL.md`](./docs/EVAL.md)):
 ## Layout
 
 ```
-data/            generator + 20 synthetic incidents (INC-001..020)
+data/            generator + 28 synthetic incidents (INC-001..028; 021-028 are the Stage 8 false-alarm/trap set)
 eval/gold/       gold answers (kept apart from data/), splits.json (frozen dev/test)
 eval/results/    tagged run results (git-ignored); eval/traces/ per-incident traces (git-ignored)
 src/incident_agent/

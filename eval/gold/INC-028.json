@@ -1,0 +1,23 @@
+{
+  "root_cause": "A real incident hidden behind an expected batch: the scheduled nightly digest job legitimately enqueued 50000 messages at minute 15, but the consumer then died at minute 41 (OutOfMemoryError in the template renderer) and stopped consuming, so the queue never drains.",
+  "evidence": [
+    "log: 'consumer thread died: OutOfMemoryError in template renderer' at minute 41, after which no messages are processed",
+    "metric:messages_consumed_per_min drops from about 900 to 0 at minute 41 and stays there; queue_depth stays at about 52000",
+    "log: consumer heartbeat missed warnings growing from 4 to 34 minutes",
+    "log: nightly digest job enqueued 50000 messages at minute 15 (the expected part of the spike)"
+  ],
+  "recommended_remediation": "Restart the email-worker consumer pods to resume consumption, and cap the digest batch size or increase the template renderer memory limit.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Restarting production pods is an explicit high-risk action.",
+  "incident_id": "INC-028",
+  "title": "consumer stall hidden by batch job",
+  "category": "consumer_stall_during_batch",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "False-negative trap and twin of INC-022: the queue growth is explained by a scheduled batch job, which invites a false-alarm verdict, but consumption stopped and the queue never drains.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

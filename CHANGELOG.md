@@ -3,6 +3,18 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 8 — LLM debate and dataset v2] — 2026-10
+### Added
+- `agents/llm_debate.py`: defender vs forensic examiner (read-only tools) with evidence-gated challenges, rebuttal, arbiter and a deterministic, asymmetric acceptance policy; `DebatedOrchestrator`; `HierarchicalSwarm(debate=True)`.
+- Harness adapters `llm_debate`, `llm_swarm_debate`; summary metrics `false_positive_rate`, `false_negative_rate`, `gold_false_alarms`, `debate_revised`, `debate_rejected`; per-incident `debate` trace.
+- `eval.compare`: FP/FN per run and per-incident flips (fixed / newly broken).
+- Dataset v2: INC-021..028 (4 hard false alarms, 4 false-negative traps); generator gained recovering excursions, sentinel gaps, fixed log events and WARN windows without changing INC-001..020 (hashes pinned).
+- CLI `--agent debate|swarm-debate`; OpenSpec change 015.
+### Changed
+- Splits: dev 14 / test 14 (added before any measurement). Validator allows documented benign WARN lines in false alarms (`benign_warnings`).
+### Notes
+- Legacy `debate_mechanism.py` computed "false-positive rate" from confidence only; kept for back-compat, not used by the LLM line.
+
 ## [Pre-Stage-8 hardening] — 2026-10
 ### Added
 - LLM layer (`llm/`): OpenAI-compatible client (Groq/Cerebras), cache, fallback, usage tracking, schema flattening, structured output with repair loop; `LLMUnavailable` (transient) vs `LLMConfigError` (permanent).

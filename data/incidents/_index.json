@@ -224,5 +224,93 @@
     ],
     "is_false_alarm": false,
     "recurrence_of": "INC-002"
+  },
+  {
+    "incident_id": "INC-021",
+    "slug": "false-alarm-planned-node-drain",
+    "category": "false_alarm_maintenance",
+    "difficulty": "medium",
+    "services": [
+      "inventory-service"
+    ],
+    "is_false_alarm": true,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-022",
+    "slug": "false-alarm-nightly-batch-reindex",
+    "category": "false_alarm_batch",
+    "difficulty": "medium",
+    "services": [
+      "search-indexer"
+    ],
+    "is_false_alarm": true,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-023",
+    "slug": "false-alarm-metrics-exporter-sentinel",
+    "category": "false_alarm_exporter",
+    "difficulty": "hard",
+    "services": [
+      "ledger-service"
+    ],
+    "is_false_alarm": true,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-024",
+    "slug": "false-alarm-approved-load-test",
+    "category": "false_alarm_loadtest",
+    "difficulty": "medium",
+    "services": [
+      "catalog-api"
+    ],
+    "is_false_alarm": true,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-025",
+    "slug": "slow-burn-memory-leak-no-errors",
+    "category": "slow_memory_leak",
+    "difficulty": "hard",
+    "services": [
+      "reporting-service"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-026",
+    "slug": "post-maintenance-config-regression",
+    "category": "post_maintenance_regression",
+    "difficulty": "hard",
+    "services": [
+      "orders-api"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-027",
+    "slug": "partial-secret-rotation-low-error-rate",
+    "category": "partial_secret_rotation",
+    "difficulty": "hard",
+    "services": [
+      "auth-proxy"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
+  },
+  {
+    "incident_id": "INC-028",
+    "slug": "consumer-stall-hidden-by-batch-job",
+    "category": "consumer_stall_during_batch",
+    "difficulty": "hard",
+    "services": [
+      "email-worker"
+    ],
+    "is_false_alarm": false,
+    "recurrence_of": null
   }
 ]

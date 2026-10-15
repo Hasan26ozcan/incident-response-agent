@@ -1,0 +1,23 @@
+{
+  "root_cause": "No real incident. The p99 latency spike to 5000 ms is a metrics artefact: the metrics exporter was restarted during a scheduled upgrade (00:25-00:31) and reported its probe-timeout sentinel, while the application logs show requests processed at normal latency throughout.",
+  "evidence": [
+    "metric:latency_p99_ms reads exactly 5000 for minutes 25-30 then returns to baseline; requests_per_sec never changes",
+    "log: metrics exporter restarted at minute 25 (scheduled upgrade) and resumed scraping at minute 31",
+    "log: ledger-service keeps logging 'request processed' at normal latency during the spike; no ERROR or WARN lines"
+  ],
+  "recommended_remediation": "No remediation needed. Make the latency alert ignore exporter sentinel values and missing scrapes.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No system-touching action; only the alert rule's own configuration may be tuned.",
+  "incident_id": "INC-023",
+  "title": "false alarm metrics exporter sentinel",
+  "category": "false_alarm_exporter",
+  "difficulty": "hard",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": "Hard false alarm: the metric alone looks like a severe latency incident; only the logs and the exporter upgrade show it is an artefact.",
+  "primary_stage_use": [
+    "8",
+    "19",
+    "20"
+  ]
+}

@@ -18,7 +18,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 INCIDENTS_DIR = ROOT / "data" / "incidents"
 GOLD_DIR = ROOT / "eval" / "gold"
-EXPECTED_COUNT = 20
+EXPECTED_COUNT = 28
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ class TestGenerator:
     def test_generator_exit_zero(self):
         proc = _run_script(ROOT / "data" / "generate_dataset.py")
         assert proc.returncode == 0, f"generate_dataset.py failed:\n{proc.stderr}"
-        assert "20 scenarios generated" in proc.stdout
+        assert "28 scenarios generated" in proc.stdout
 
     def test_generator_deterministic(self):
         """Running the generator twice should produce identical output."""

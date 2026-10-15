@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:55:00+00:00",
+    "service": "secrets-manager",
+    "version": "rotation-2026-03-01",
+    "description": "Scheduled rotation of the billing-api credential; rollout to auth-proxy pods completed on 2 of 3 pods"
+  }
+]

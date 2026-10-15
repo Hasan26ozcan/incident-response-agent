@@ -1,0 +1,22 @@
+{
+  "root_cause": "A real incident that follows a planned maintenance but is not part of it. The configuration refresh in CHG-5012 loaded POOL_SIZE=2 instead of 50, so the db connection pool is exhausted from minute 31 on; latency and error rate climb after the window closed and do not recover.",
+  "evidence": [
+    "log: 'config value POOL_SIZE=2 loaded after refresh (previous value 50)' and 'db connection pool exhausted: active=2 idle=0' starting minute 31",
+    "metric:error_rate_percent and metric:latency_p99_ms rise from minute 31, after the maintenance window ended at minute 30, and stay elevated",
+    "deploy: change record CHG-5012, planned maintenance with configuration refresh, approved window 00:20-00:30"
+  ],
+  "recommended_remediation": "Revert POOL_SIZE to 50 in the refreshed configuration and reload the service configuration.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "Reverting a configuration value is a reversible persistent change (medium); it is not a restart or rollback of a deploy.",
+  "incident_id": "INC-026",
+  "title": "post maintenance config regression",
+  "category": "post_maintenance_regression",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "False-negative trap and twin of INC-021: a documented maintenance window and a recovered CPU blip invite 'expected maintenance', but errors start after the window closed and never recover.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

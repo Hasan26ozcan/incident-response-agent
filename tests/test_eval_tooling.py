@@ -34,7 +34,7 @@ def test_split_is_disjoint_complete_and_balanced():
     dev, test = load_split("dev"), load_split("test")
     assert not set(dev) & set(test)
     assert sorted(dev + test) == _gold_ids()
-    assert len(dev) == len(test) == 10
+    assert len(dev) == len(test) == 14
     for split in (dev, test):
         diffs = Counter(json.loads((harness.GOLD_DIR / f"{i}.json").read_text())["difficulty"] for i in split)
         assert diffs["hard"] >= 2 and diffs["easy"] >= 2  # both halves contain easy and hard cases
@@ -63,15 +63,15 @@ def test_main_writes_tagged_report_with_meta_and_usage(sandbox):
     harness.main(["--agent", "llm_react", "--split", "dev", "--tag", "t1"])
     rep = json.loads((sandbox / "results" / "llm_react__t1.json").read_text())
     assert rep["meta"]["complete"] is True and rep["meta"]["split"] == "dev" and rep["meta"]["tag"] == "t1"
-    assert rep["summary"]["n"] == 10 and rep["summary"]["llm_calls"] == 20
-    assert rep["summary"]["prompt_tokens"] == 100
+    assert rep["summary"]["n"] == 14 and rep["summary"]["llm_calls"] == 28
+    assert rep["summary"]["prompt_tokens"] == 140
     assert not (sandbox / "openings.log").exists()  # dev does not count as a test opening
 
 
 def test_opening_test_split_is_logged(sandbox, capsys):
     harness.main(["--agent", "llm_react", "--split", "test", "--tag", "t2", "--limit", "2"])
     log = (sandbox / "openings.log").read_text()
-    assert "tag=t2" in log and "n=10" in log
+    assert "tag=t2" in log and "n=14" in log
     assert "TEST SET OPENED" in capsys.readouterr().out
 
 
@@ -100,8 +100,8 @@ def test_incremental_save_and_resume(sandbox):
     harness.make_adapter = lambda name, temperature=0.0, risk_guard=False: ok  # type: ignore[assignment]
     harness.main(["--agent", "llm_react", "--split", "dev", "--tag", "r", "--resume"])
     final = json.loads(path.read_text())
-    assert final["meta"]["complete"] is True and len(final["incidents"]) == 10
-    assert len(resumed) == 8  # the 2 finished incidents were not re-run
+    assert final["meta"]["complete"] is True and len(final["incidents"]) == 14
+    assert len(resumed) == 12  # the 2 finished incidents were not re-run
 
 
 def test_trace_files_only_with_flag(sandbox):

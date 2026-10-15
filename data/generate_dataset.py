@@ -200,6 +200,46 @@ TEMPLATES = {
             "db connection pool utilization at 90%",
         ],
     },
+    # ---- dataset v2 (INC-021..028): hard false alarms and real incidents that look harmless ----
+    "false_alarm_maintenance": {
+        "normal": ["health check ok", "request processed in {lat}ms", "cache hit ratio 92%"],
+        "anomaly": [],
+    },
+    "false_alarm_batch": {
+        "normal": ["health check ok", "request processed in {lat}ms", "index segment merged"],
+        "anomaly": [],
+    },
+    "false_alarm_exporter": {
+        "normal": ["health check ok", "request processed in {lat}ms", "ledger entry committed"],
+        "anomaly": [],
+    },
+    "false_alarm_loadtest": {
+        "normal": ["health check ok", "request processed in {lat}ms", "catalog cache warm"],
+        "anomaly": [],
+    },
+    "slow_memory_leak": {
+        "normal": ["health check ok", "request processed in {lat}ms", "report generated"],
+        "anomaly": [],  # quiet by design: no ERROR lines, only late WARN lines
+    },
+    "post_maintenance_regression": {
+        "normal": ["health check ok", "request processed in {lat}ms", "order validated successfully"],
+        "anomaly": [
+            "db connection pool exhausted: active=2 idle=0 waiting={q}",
+            "config value POOL_SIZE=2 loaded after refresh (previous value 50)",
+            "request failed: timed out waiting for db connection after 5000ms",
+        ],
+    },
+    "partial_secret_rotation": {
+        "normal": ["health check ok", "request processed in {lat}ms", "token validated"],
+        "anomaly": [
+            "401 Unauthorized from downstream billing-api (pod auth-proxy-2): credential rejected",
+            "authentication failed: invalid credentials presented by pod auth-proxy-2",
+        ],
+    },
+    "consumer_stall_during_batch": {
+        "normal": ["health check ok", "message processed in {lat}ms", "consumer heartbeat ok"],
+        "anomaly": [],
+    },
     "false_alarm": {
         "normal": ["health check ok", "request processed in {lat}ms", "metrics within normal range"],
         "anomaly": [],  # deliberately empty: no real anomaly signal exists
@@ -207,7 +247,7 @@ TEMPLATES = {
 }
 
 
-def gen_metric_series(rng, total_minutes, step_min, baseline, noise, anomaly=None, spike_at=None):
+def gen_metric_series(rng, total_minutes, step_min, baseline, noise, anomaly=None, spike_at=None, gap=None):
     """anomaly: {'start_offset_min', 'target', 'ramp_min', 'duration_min'} or None.
     spike_at: single-point transient blip (used for the false-alarm scenario)."""
     points = []
@@ -225,9 +265,14 @@ def gen_metric_series(rng, total_minutes, step_min, baseline, noise, anomaly=Non
                 progress = min(1.0, (minute - start) / max(1, ramp))
                 val = baseline + (target - baseline) * progress + rng.gauss(0, noise)
             elif minute >= start + dur:
-                val = target + rng.gauss(0, noise)  # stays elevated (unresolved at snapshot end)
+                if anomaly.get("recovers"):
+                    val = baseline + rng.gauss(0, noise)  # transient: back to normal on its own
+                else:
+                    val = target + rng.gauss(0, noise)  # stays elevated (unresolved at snapshot end)
         if spike_at is not None and minute == spike_at:
             val = baseline + noise * 6  # transient blip, single point
+        if gap is not None and gap["start"] <= minute < gap["end"]:
+            val = gap["value"]  # exporter artefact: a fixed sentinel value, no extra RNG draw
         points.append({"ts": t.isoformat(), "value": max(0.0, round(val, 2))})
     return points
 
@@ -242,6 +287,9 @@ def gen_logs(
     anomaly_rate_per_min=4,
     distractor_start_offset_min=None,
     distractor_rate_per_min=2,
+    events=None,
+    warn_window=None,
+    normal_until_min=None,
 ):
     lines = []
     normal = cat_templates["normal"]
@@ -249,7 +297,9 @@ def gen_logs(
     distractor = cat_templates.get("distractor", [])
     for minute in range(total_minutes):
         t = BASE_TIME + timedelta(minutes=minute)
-        for _ in range(rng.randint(0, normal_rate_per_min)):
+        for _ in range(
+            rng.randint(0, normal_rate_per_min) if normal_until_min is None or minute < normal_until_min else 0
+        ):
             tmpl = rng.choice(normal)
             msg = tmpl.format(lat=rng.randint(20, 90), pct=rng.randint(10, 40), q=rng.randint(0, 5))
             ts = t + timedelta(seconds=rng.randint(0, 59))
@@ -271,6 +321,20 @@ def gen_logs(
                 msg = tmpl.format(lat=rng.randint(500, 2000), pct=rng.randint(80, 95), q=rng.randint(50, 200))
                 ts = t + timedelta(seconds=rng.randint(0, 59))
                 lines.append(f'{ts.isoformat()} service={service} level=WARN msg="{msg}"')
+        if warn_window and warn_window["start"] <= minute < warn_window["end"]:  # v2 only: benign/quiet WARN lines
+            span = max(1, warn_window["end"] - warn_window["start"])
+            lo, hi = warn_window.get("pct", (0, 0))
+            lat_lo, lat_hi = warn_window.get("lat", (20, 90))
+            for _ in range(rng.randint(0, warn_window.get("rate", 1))):
+                msg = rng.choice(warn_window["templates"]).format(
+                    pct=round(lo + (hi - lo) * (minute - warn_window["start"]) / span),
+                    lat=rng.randint(lat_lo, lat_hi),
+                )
+                ts = t + timedelta(seconds=rng.randint(0, 59))
+                lines.append(f'{ts.isoformat()} service={service} level=WARN msg="{msg}"')
+    for ev in events or []:  # v2 only: fixed one-off log events (maintenance start/end, job start/end, ...)
+        ts = BASE_TIME + timedelta(minutes=ev["minute"], seconds=rng.randint(0, 59))
+        lines.append(f'{ts.isoformat()} service={service} level={ev["level"]} msg="{ev["msg"]}"')
     lines.sort()
     return lines
 
@@ -916,6 +980,377 @@ SCENARIOS = [
         primary_stage_use=["12", "19"],
         distractor_note="Designed to test Stage 12 episodic memory: an agent that retrieved and generalized from INC-002's post-mortem should diagnose this faster/more accurately than one seeing it cold, despite the different service name and cache field names.",
     ),
+    # ------------------------------------------------------------------
+    # Dataset v2 (INC-021..028). Added before any measurement; INC-001..020 are untouched.
+    # Four HARD false alarms (a benign explanation exists in the data) and four REAL incidents that
+    # superficially look benign. Stage 8 needs both: debate must remove false positives without
+    # learning to dismiss everything.
+    # ------------------------------------------------------------------
+    dict(
+        id="INC-021",
+        slug="false-alarm-planned-node-drain",
+        category="false_alarm_maintenance",
+        difficulty="medium",
+        services=["inventory-service"],
+        total_minutes=75,
+        incident_start_min=None,
+        metrics={
+            "cpu_percent": dict(
+                baseline=35,
+                noise=3,
+                transient=True,
+                anomaly=dict(start_offset_min=20, target=78, ramp_min=3, duration_min=12, recovers=True),
+            ),
+            "latency_p99_ms": dict(
+                baseline=90,
+                noise=10,
+                transient=True,
+                anomaly=dict(start_offset_min=20, target=210, ramp_min=3, duration_min=12, recovers=True),
+            ),
+        },
+        deploys=[
+            dict(
+                offset_min=-120,
+                version="maint-CHG-4821",
+                description="PLANNED MAINTENANCE CHG-4821 (approved window 00:18-00:32): rolling node drain of node pool b for kernel patching; no application change",
+            )
+        ],
+        log_events=[
+            dict(minute=18, level="INFO", msg="maintenance window CHG-4821 started: draining node pool b"),
+            dict(
+                minute=32, level="INFO", msg="maintenance window CHG-4821 complete: pods rescheduled, nodes uncordoned"
+            ),
+        ],
+        warn_window=dict(
+            start=19,
+            end=31,
+            rate=2,
+            templates=[
+                "pod evicted by node drain (graceful, replacement scheduled)",
+                "readiness probe slow during rescheduling (expected during drain)",
+            ],
+        ),
+        gold=dict(
+            benign_warnings=True,
+            root_cause="No real incident. The alert was caused by the pre-announced rolling node drain CHG-4821 (00:18-00:32): CPU and latency rose briefly while pods were rescheduled and returned to baseline on their own before the maintenance window closed.",
+            evidence=[
+                "deploy: change record CHG-4821 filed before the window: planned node drain, approved window 00:18-00:32, no application change",
+                "log: maintenance window CHG-4821 started at minute 18 and completed at minute 32; WARN lines are graceful pod evictions only",
+                "metric:cpu_percent and metric:latency_p99_ms rise inside the window and recover to baseline right after it",
+            ],
+            recommended_remediation="No remediation needed. Close the alert as expected maintenance and add a schedule-aware silence for approved maintenance windows.",
+            remediation_risk_tier="low",
+            risk_rationale="No system-touching action; only the alert rule's own configuration may be tuned.",
+        ),
+        is_false_alarm=True,
+        primary_stage_use=["8", "19"],
+        distractor_note="Hard false alarm: WARN lines and a visible CPU/latency excursion exist, but a deploy entry and log events document a planned maintenance window and everything recovers.",
+    ),
+    dict(
+        id="INC-022",
+        slug="false-alarm-nightly-batch-reindex",
+        category="false_alarm_batch",
+        difficulty="medium",
+        services=["search-indexer"],
+        total_minutes=90,
+        incident_start_min=None,
+        metrics={
+            "memory_percent": dict(
+                baseline=40,
+                noise=2,
+                transient=True,
+                anomaly=dict(start_offset_min=30, target=72, ramp_min=8, duration_min=25, recovers=True),
+            ),
+            "cpu_percent": dict(
+                baseline=28,
+                noise=3,
+                transient=True,
+                anomaly=dict(start_offset_min=30, target=70, ramp_min=5, duration_min=25, recovers=True),
+            ),
+        },
+        deploys=[],
+        log_events=[
+            dict(minute=30, level="INFO", msg="nightly reindex job started (scheduled, cron 30 0 * * *)"),
+            dict(minute=55, level="INFO", msg="nightly reindex job finished: 1.2M documents indexed in 24m"),
+        ],
+        warn_window=dict(
+            start=31,
+            end=54,
+            rate=1,
+            lat=(500, 900),
+            templates=["slow query detected: {lat}ms (batch workload, expected during reindex)"],
+        ),
+        gold=dict(
+            benign_warnings=True,
+            root_cause="No real incident. The nightly scheduled reindex job (00:30-00:55) caused the expected CPU and memory increase and some slow batch queries; resource usage returned to baseline when the job finished.",
+            evidence=[
+                "log: nightly reindex job started at minute 30 (scheduled) and finished at minute 55",
+                "metric:memory_percent and metric:cpu_percent rise only while the job runs and return to baseline afterwards",
+                "log: the slow-query WARN lines are labelled as expected batch workload; there are no ERROR lines",
+            ],
+            recommended_remediation="No remediation needed. Add a schedule-aware silence for the nightly reindex window to the alert rule.",
+            remediation_risk_tier="low",
+            risk_rationale="No system-touching action; only the alert rule's own configuration may be tuned.",
+        ),
+        is_false_alarm=True,
+        primary_stage_use=["8", "19"],
+        distractor_note="Hard false alarm: a sizeable, sustained resource excursion plus WARN lines, fully explained by a scheduled job visible in the logs. Twin of INC-028, where a batch job masks a real consumer stall.",
+    ),
+    dict(
+        id="INC-023",
+        slug="false-alarm-metrics-exporter-sentinel",
+        category="false_alarm_exporter",
+        difficulty="hard",
+        services=["ledger-service"],
+        total_minutes=60,
+        incident_start_min=None,
+        metrics={
+            "latency_p99_ms": dict(baseline=110, noise=8, gap=dict(start=25, end=31, value=5000.0)),
+            "requests_per_sec": dict(baseline=320, noise=15),
+        },
+        deploys=[
+            dict(
+                offset_min=-60,
+                service="metrics-exporter",
+                version="0.18.3",
+                description="Scheduled sidecar upgrade of the metrics exporter (0.18.2 -> 0.18.3), planned for 00:25-00:31; ledger-service itself is unchanged",
+            )
+        ],
+        log_events=[
+            dict(minute=25, level="INFO", msg="metrics exporter restarted (scheduled upgrade 0.18.2 -> 0.18.3)"),
+            dict(minute=31, level="INFO", msg="metrics exporter scrape resumed"),
+        ],
+        gold=dict(
+            root_cause="No real incident. The p99 latency spike to 5000 ms is a metrics artefact: the metrics exporter was restarted during a scheduled upgrade (00:25-00:31) and reported its probe-timeout sentinel, while the application logs show requests processed at normal latency throughout.",
+            evidence=[
+                "metric:latency_p99_ms reads exactly 5000 for minutes 25-30 then returns to baseline; requests_per_sec never changes",
+                "log: metrics exporter restarted at minute 25 (scheduled upgrade) and resumed scraping at minute 31",
+                "log: ledger-service keeps logging 'request processed' at normal latency during the spike; no ERROR or WARN lines",
+            ],
+            recommended_remediation="No remediation needed. Make the latency alert ignore exporter sentinel values and missing scrapes.",
+            remediation_risk_tier="low",
+            risk_rationale="No system-touching action; only the alert rule's own configuration may be tuned.",
+        ),
+        is_false_alarm=True,
+        primary_stage_use=["8", "19", "20"],
+        distractor_note="Hard false alarm: the metric alone looks like a severe latency incident; only the logs and the exporter upgrade show it is an artefact.",
+    ),
+    dict(
+        id="INC-024",
+        slug="false-alarm-approved-load-test",
+        category="false_alarm_loadtest",
+        difficulty="medium",
+        services=["catalog-api"],
+        total_minutes=60,
+        incident_start_min=None,
+        metrics={
+            "requests_per_sec": dict(
+                baseline=200,
+                noise=15,
+                transient=True,
+                anomaly=dict(start_offset_min=20, target=1400, ramp_min=2, duration_min=15, recovers=True),
+            ),
+            "cpu_percent": dict(
+                baseline=30,
+                noise=3,
+                transient=True,
+                anomaly=dict(start_offset_min=20, target=68, ramp_min=3, duration_min=15, recovers=True),
+            ),
+            "latency_p99_ms": dict(
+                baseline=80,
+                noise=8,
+                transient=True,
+                anomaly=dict(start_offset_min=21, target=180, ramp_min=3, duration_min=14, recovers=True),
+            ),
+        },
+        deploys=[],
+        log_events=[
+            dict(
+                minute=20,
+                level="INFO",
+                msg="synthetic load test lt-0301 started by perf-team (approved, change CHG-4830)",
+            ),
+            dict(minute=35, level="INFO", msg="synthetic load test lt-0301 finished"),
+        ],
+        warn_window=dict(
+            start=21, end=35, rate=1, templates=["rate limiter engaged for client lt-runner (expected, test traffic)"]
+        ),
+        gold=dict(
+            benign_warnings=True,
+            root_cause="No real incident. An approved synthetic load test (lt-0301, CHG-4830, 00:20-00:35) multiplied request volume 7x; CPU and latency rose moderately, the rate limiter engaged for the test client as designed, and everything returned to baseline when the test ended.",
+            evidence=[
+                "log: synthetic load test lt-0301 started by perf-team at minute 20 (approved) and finished at minute 35",
+                "metric:requests_per_sec jumps from about 200 to 1400 between minute 20 and 35 then returns; CPU and latency follow and recover",
+                "log: the only WARN lines say the rate limiter engaged for the test client (expected); no ERROR lines",
+            ],
+            recommended_remediation="No remediation needed. Add a schedule-aware silence for approved load tests to the alert rule.",
+            remediation_risk_tier="low",
+            risk_rationale="No system-touching action; only the alert rule's own configuration may be tuned.",
+        ),
+        is_false_alarm=True,
+        primary_stage_use=["8", "19"],
+        distractor_note="Hard false alarm: a large traffic surge with a latency rise looks like an overload incident; the logs show it was a documented, approved test.",
+    ),
+    dict(
+        id="INC-025",
+        slug="slow-burn-memory-leak-no-errors",
+        category="slow_memory_leak",
+        difficulty="hard",
+        services=["reporting-service"],
+        total_minutes=120,
+        incident_start_min=10,
+        metrics={
+            "memory_percent": dict(baseline=38, noise=1.5, anomaly=dict(start_offset_min=10, target=83, ramp_min=110)),
+            "gc_pause_ms": dict(baseline=30, noise=5, anomaly=dict(start_offset_min=70, target=95, ramp_min=40)),
+            "cpu_percent": dict(baseline=25, noise=3),
+        },
+        deploys=[
+            dict(
+                offset_min=-30,
+                version="3.2.0",
+                description="reporting-service: added in-process memoization of dashboard query results (no size bound)",
+            )
+        ],
+        warn_window=dict(
+            start=60, end=120, rate=1, pct=(62, 82), templates=["heap usage {pct}% of limit, approaching hard cap"]
+        ),
+        gold=dict(
+            root_cause="A real, slow memory leak. Release 3.2.0 added unbounded in-process memoization of dashboard query results, so heap usage climbs steadily from 38% to over 80% across the window; there are no ERROR lines yet, but the service will hit its limit and be OOM-killed if nothing is done.",
+            evidence=[
+                "metric:memory_percent climbs steadily from minute 10 to about 83% by the end of the window and never recovers",
+                "metric:gc_pause_ms starts rising around minute 70",
+                "deploy: v3.2.0 added unbounded memoization 30 minutes before the window",
+                "log: only late WARN lines 'heap usage N% of limit, approaching hard cap' with N increasing; no ERROR lines",
+            ],
+            recommended_remediation="Roll back to the previous release (3.1.x) and bound the memoization cache with a size limit and TTL before redeploying.",
+            remediation_risk_tier="high",
+            risk_rationale="Rolling back a production deploy is an explicit high-risk action.",
+        ),
+        primary_stage_use=["8", "19"],
+        distractor_note="False-negative trap: no ERROR lines, CPU is normal and the service is still serving. A debate that treats 'no errors' as 'no incident' dismisses a real, worsening leak.",
+    ),
+    dict(
+        id="INC-026",
+        slug="post-maintenance-config-regression",
+        category="post_maintenance_regression",
+        difficulty="hard",
+        services=["orders-api"],
+        total_minutes=90,
+        incident_start_min=31,
+        metrics={
+            "cpu_percent": dict(
+                baseline=30,
+                noise=3,
+                anomaly=dict(start_offset_min=20, target=60, ramp_min=2, duration_min=10, recovers=True),
+            ),
+            "latency_p99_ms": dict(baseline=100, noise=10, anomaly=dict(start_offset_min=31, target=3600, ramp_min=6)),
+            "error_rate_percent": dict(
+                baseline=0.5, noise=0.2, anomaly=dict(start_offset_min=31, target=24, ramp_min=5)
+            ),
+        },
+        deploys=[
+            dict(
+                offset_min=-180,
+                version="maint-CHG-5012",
+                description="PLANNED MAINTENANCE CHG-5012 (approved window 00:20-00:30): rolling restart with configuration refresh",
+            )
+        ],
+        log_events=[
+            dict(
+                minute=20, level="INFO", msg="maintenance window CHG-5012 started: rolling restart with config refresh"
+            ),
+            dict(minute=30, level="INFO", msg="maintenance window CHG-5012 complete"),
+        ],
+        gold=dict(
+            root_cause="A real incident that follows a planned maintenance but is not part of it. The configuration refresh in CHG-5012 loaded POOL_SIZE=2 instead of 50, so the db connection pool is exhausted from minute 31 on; latency and error rate climb after the window closed and do not recover.",
+            evidence=[
+                "log: 'config value POOL_SIZE=2 loaded after refresh (previous value 50)' and 'db connection pool exhausted: active=2 idle=0' starting minute 31",
+                "metric:error_rate_percent and metric:latency_p99_ms rise from minute 31, after the maintenance window ended at minute 30, and stay elevated",
+                "deploy: change record CHG-5012, planned maintenance with configuration refresh, approved window 00:20-00:30",
+            ],
+            recommended_remediation="Revert POOL_SIZE to 50 in the refreshed configuration and reload the service configuration.",
+            remediation_risk_tier="medium",
+            risk_rationale="Reverting a configuration value is a reversible persistent change (medium); it is not a restart or rollback of a deploy.",
+        ),
+        primary_stage_use=["8", "19"],
+        distractor_note="False-negative trap and twin of INC-021: a documented maintenance window and a recovered CPU blip invite 'expected maintenance', but errors start after the window closed and never recover.",
+    ),
+    dict(
+        id="INC-027",
+        slug="partial-secret-rotation-low-error-rate",
+        category="partial_secret_rotation",
+        difficulty="hard",
+        services=["auth-proxy"],
+        total_minutes=90,
+        incident_start_min=25,
+        anomaly_rate=1,
+        metrics={
+            "error_rate_percent": dict(
+                baseline=0.3, noise=0.1, anomaly=dict(start_offset_min=25, target=3.5, ramp_min=4)
+            ),
+            "latency_p99_ms": dict(baseline=70, noise=6),
+        },
+        deploys=[
+            dict(
+                offset_min=-5,
+                service="secrets-manager",
+                version="rotation-2026-03-01",
+                description="Scheduled rotation of the billing-api credential; rollout to auth-proxy pods completed on 2 of 3 pods",
+            )
+        ],
+        gold=dict(
+            root_cause="A real, partial failure after a credential rotation: one of three auth-proxy pods (auth-proxy-2) still presents the old, now-revoked billing-api credential, so about 3% of requests fail with 401 while the other pods are healthy.",
+            evidence=[
+                "metric:error_rate_percent steps from about 0.3% to about 3.5% at minute 25, shortly after the rotation, and stays there; latency is normal",
+                "log: repeated '401 Unauthorized from downstream billing-api (pod auth-proxy-2): credential rejected'",
+                "deploy: credential rotation recorded just before the window as rolled out to only 2 of 3 pods",
+            ],
+            recommended_remediation="Re-sync the rotated credential to the stale pod auth-proxy-2 and restart it so it mounts the new secret.",
+            remediation_risk_tier="high",
+            risk_rationale="Touching credentials/secrets and restarting a production pod are explicit high-risk actions.",
+        ),
+        primary_stage_use=["8", "19"],
+        distractor_note="False-negative trap: a 3% error rate, normal latency and a sparse error log look like noise, but the failures are persistent, localized to one pod and tied to the rotation.",
+    ),
+    dict(
+        id="INC-028",
+        slug="consumer-stall-hidden-by-batch-job",
+        category="consumer_stall_during_batch",
+        difficulty="hard",
+        services=["email-worker"],
+        total_minutes=90,
+        incident_start_min=15,
+        normal_until_min=41,
+        metrics={
+            "queue_depth": dict(baseline=150, noise=20, anomaly=dict(start_offset_min=15, target=52000, ramp_min=3)),
+            "messages_consumed_per_min": dict(
+                baseline=900, noise=40, anomaly=dict(start_offset_min=41, target=0, ramp_min=1)
+            ),
+        },
+        deploys=[],
+        log_events=[
+            dict(minute=15, level="INFO", msg="nightly digest job enqueued 50000 messages (scheduled)"),
+            dict(minute=41, level="ERROR", msg="consumer thread died: OutOfMemoryError in template renderer"),
+            dict(minute=45, level="WARN", msg="consumer heartbeat missed for 4 minutes"),
+            dict(minute=52, level="WARN", msg="consumer heartbeat missed for 11 minutes"),
+            dict(minute=60, level="WARN", msg="consumer heartbeat missed for 19 minutes"),
+            dict(minute=75, level="WARN", msg="consumer heartbeat missed for 34 minutes"),
+        ],
+        gold=dict(
+            root_cause="A real incident hidden behind an expected batch: the scheduled nightly digest job legitimately enqueued 50000 messages at minute 15, but the consumer then died at minute 41 (OutOfMemoryError in the template renderer) and stopped consuming, so the queue never drains.",
+            evidence=[
+                "log: 'consumer thread died: OutOfMemoryError in template renderer' at minute 41, after which no messages are processed",
+                "metric:messages_consumed_per_min drops from about 900 to 0 at minute 41 and stays there; queue_depth stays at about 52000",
+                "log: consumer heartbeat missed warnings growing from 4 to 34 minutes",
+                "log: nightly digest job enqueued 50000 messages at minute 15 (the expected part of the spike)",
+            ],
+            recommended_remediation="Restart the email-worker consumer pods to resume consumption, and cap the digest batch size or increase the template renderer memory limit.",
+            remediation_risk_tier="high",
+            risk_rationale="Restarting production pods is an explicit high-risk action.",
+        ),
+        primary_stage_use=["8", "19"],
+        distractor_note="False-negative trap and twin of INC-022: the queue growth is explained by a scheduled batch job, which invites a false-alarm verdict, but consumption stopped and the queue never drains.",
+    ),
 ]
 
 
@@ -927,8 +1362,8 @@ def build_scenario(rng, spec):
     metrics_out = {}
     for name, m in spec["metrics"].items():
         anomaly = None
-        if spec.get("incident_start_min") is not None and "anomaly" in m:
-            anomaly = m["anomaly"]
+        if "anomaly" in m and (spec.get("incident_start_min") is not None or m.get("transient")):
+            anomaly = m["anomaly"]  # "transient": a self-recovering excursion in a scenario with no real incident
         spike_at = None
         if "metrics_spike" in spec and name in spec["metrics_spike"]:
             spike_at = spec["metrics_spike"][name]
@@ -940,6 +1375,7 @@ def build_scenario(rng, spec):
             noise=m["noise"],
             anomaly=anomaly,
             spike_at=spike_at,
+            gap=m.get("gap"),
         )
 
     anomaly_start = spec.get("incident_start_min")
@@ -954,6 +1390,10 @@ def build_scenario(rng, spec):
         cat_templates,
         anomaly_start_offset_min=anomaly_start if anomaly_start is not None else total_minutes + 1,
         distractor_start_offset_min=distractor_start,
+        events=spec.get("log_events"),
+        warn_window=spec.get("warn_window"),
+        normal_until_min=spec.get("normal_until_min"),
+        **({"anomaly_rate_per_min": spec["anomaly_rate"]} if "anomaly_rate" in spec else {}),
     )
 
     deploys = gen_deploys(primary_service, spec["deploys"])
@@ -996,12 +1436,12 @@ def main():
 
         inc_dir = INCIDENTS_DIR / spec["id"]
         inc_dir.mkdir(parents=True, exist_ok=True)
-        (inc_dir / "meta.json").write_text(json.dumps(meta, indent=2))
-        (inc_dir / "logs.log").write_text("\n".join(logs) + "\n")
-        (inc_dir / "metrics.json").write_text(json.dumps(metrics_out, indent=2))
-        (inc_dir / "deploys.json").write_text(json.dumps(deploys, indent=2))
+        (inc_dir / "meta.json").write_text(json.dumps(meta, indent=2), newline="\n")
+        (inc_dir / "logs.log").write_text("\n".join(logs) + "\n", newline="\n")
+        (inc_dir / "metrics.json").write_text(json.dumps(metrics_out, indent=2), newline="\n")
+        (inc_dir / "deploys.json").write_text(json.dumps(deploys, indent=2), newline="\n")
 
-        (GOLD_DIR / f"{spec['id']}.json").write_text(json.dumps(gold, indent=2))
+        (GOLD_DIR / f"{spec['id']}.json").write_text(json.dumps(gold, indent=2), newline="\n")
 
         index.append(
             {
@@ -1016,7 +1456,7 @@ def main():
         )
         print(f"generated {spec['id']} ({spec['slug']})")
 
-    (INCIDENTS_DIR / "_index.json").write_text(json.dumps(index, indent=2))
+    (INCIDENTS_DIR / "_index.json").write_text(json.dumps(index, indent=2), newline="\n")
     print(f"\n{len(SCENARIOS)} scenarios generated under {INCIDENTS_DIR}")
     print(f"gold answers written under {GOLD_DIR} (kept out of data/incidents/ to prevent eval leakage)")
 

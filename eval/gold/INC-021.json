@@ -1,0 +1,23 @@
+{
+  "benign_warnings": true,
+  "root_cause": "No real incident. The alert was caused by the pre-announced rolling node drain CHG-4821 (00:18-00:32): CPU and latency rose briefly while pods were rescheduled and returned to baseline on their own before the maintenance window closed.",
+  "evidence": [
+    "deploy: change record CHG-4821 filed before the window: planned node drain, approved window 00:18-00:32, no application change",
+    "log: maintenance window CHG-4821 started at minute 18 and completed at minute 32; WARN lines are graceful pod evictions only",
+    "metric:cpu_percent and metric:latency_p99_ms rise inside the window and recover to baseline right after it"
+  ],
+  "recommended_remediation": "No remediation needed. Close the alert as expected maintenance and add a schedule-aware silence for approved maintenance windows.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No system-touching action; only the alert rule's own configuration may be tuned.",
+  "incident_id": "INC-021",
+  "title": "false alarm planned node drain",
+  "category": "false_alarm_maintenance",
+  "difficulty": "medium",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": "Hard false alarm: WARN lines and a visible CPU/latency excursion exist, but a deploy entry and log events document a planned maintenance window and everything recovers.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}

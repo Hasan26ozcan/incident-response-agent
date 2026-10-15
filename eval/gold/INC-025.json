@@ -1,0 +1,23 @@
+{
+  "root_cause": "A real, slow memory leak. Release 3.2.0 added unbounded in-process memoization of dashboard query results, so heap usage climbs steadily from 38% to over 80% across the window; there are no ERROR lines yet, but the service will hit its limit and be OOM-killed if nothing is done.",
+  "evidence": [
+    "metric:memory_percent climbs steadily from minute 10 to about 83% by the end of the window and never recovers",
+    "metric:gc_pause_ms starts rising around minute 70",
+    "deploy: v3.2.0 added unbounded memoization 30 minutes before the window",
+    "log: only late WARN lines 'heap usage N% of limit, approaching hard cap' with N increasing; no ERROR lines"
+  ],
+  "recommended_remediation": "Roll back to the previous release (3.1.x) and bound the memoization cache with a size limit and TTL before redeploying.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rolling back a production deploy is an explicit high-risk action.",
+  "incident_id": "INC-025",
+  "title": "slow burn memory leak no errors",
+  "category": "slow_memory_leak",
+  "difficulty": "hard",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": "False-negative trap: no ERROR lines, CPU is normal and the service is still serving. A debate that treats 'no errors' as 'no incident' dismisses a real, worsening leak.",
+  "primary_stage_use": [
+    "8",
+    "19"
+  ]
+}
