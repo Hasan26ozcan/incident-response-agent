@@ -3,6 +3,15 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 9 — LLM Tree-of-Thought + Plan-and-Solve] — 2026-10
+### Added
+- `agents/tree_of_thought.py`: hypothesize (verbatim-quoted observations, distinct alternatives each with a plan; current diagnosis is always H0), parallel branches that execute their plan with read-only tools and file a structured report, deterministic `score_branch` (only grounded items count), margin-gated switch (`SWITCH_MARGIN` 0.15, ties keep H0), solve step under the shared `accept_revision` policy, confidence cap on thin margins, optional confidence gate, failure isolation (`LLMConfigError` always propagates); `ToTOrchestrator`; `HierarchicalSwarm(tot=True)` (order ToT, debate, commander).
+- Harness adapters `llm_tot`, `llm_swarm_full`; summary `tot_switched`, `tot_rejected`; per-incident `tot` trace; CLI `--agent tot|swarm-full`; OpenSpec change 016.
+### Changed
+- `accept_revision` is now a shared module-level function used by both debate and ToT.
+### Notes
+- 28-mutant check on `tree_of_thought.py`: all killed. Legacy `tree_of_thought_agent.py` kept for back-compat, not used by the LLM line.
+
 ## [Stage 8 — LLM debate and dataset v2] — 2026-10
 ### Added
 - `agents/llm_debate.py`: defender vs forensic examiner (read-only tools) with evidence-gated challenges, rebuttal, arbiter and a deterministic, asymmetric acceptance policy; `DebatedOrchestrator`; `HierarchicalSwarm(debate=True)`.

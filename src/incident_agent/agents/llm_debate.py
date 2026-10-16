@@ -134,6 +134,29 @@ class DebateResult:
         }
 
 
+def accept_revision(
+    rev: RevisedDiagnosis, original: Diagnosis, seen: set[str], signals: Signals | None
+) -> tuple[bool, list[bool], str]:
+    """Shared acceptance policy for any stage that may change a diagnosis (debate, tree of thought).
+
+    Returns (accepted, per-quote grounding, reason when rejected). Dismissing a real incident as a false alarm is
+    the costliest mistake, so it needs at least two quotes, all grounded, and (when worker signals exist) every
+    domain reported normal. Any other revision needs at least half of its quotes grounded.
+    """
+    grounded = [is_grounded(q, seen) for q in rev.supporting_quotes]
+    share = sum(grounded) / len(grounded)
+    dismissing_real = rev.is_false_alarm and not claims_false_alarm(original.root_cause)
+    if dismissing_real:
+        if not all(grounded) or len(grounded) < 2:
+            return False, grounded, "dismissing a real incident needs at least two quotes, all grounded"
+        if signals is not None and not signals.all_domains_normal:
+            return False, grounded, "dismissing a real incident needs every domain reported normal"
+        return True, grounded, ""
+    if share < 0.5:
+        return False, grounded, "supporting quotes are not found in the evidence"
+    return True, grounded, ""
+
+
 def _diag_json(d: Diagnosis) -> str:
     return json.dumps(
         {
@@ -221,22 +244,6 @@ class LLMDebate:
         if rebuttal is not None:
             answered = {r.challenge for r in rebuttal.responses if not r.conceded and is_grounded(r.quote, seen)}
         return [i for i in range(len(challenges)) if i not in answered]
-
-    def _accept_revision(
-        self, rev: RevisedDiagnosis, original: Diagnosis, seen: set[str], signals: Signals | None
-    ) -> tuple[bool, list[bool], str]:
-        grounded = [is_grounded(q, seen) for q in rev.supporting_quotes]
-        share = sum(grounded) / len(grounded)
-        dismissing_real = rev.is_false_alarm and not claims_false_alarm(original.root_cause)
-        if dismissing_real:
-            if not all(grounded) or len(grounded) < 2:
-                return False, grounded, "dismissing a real incident needs at least two quotes, all grounded"
-            if signals is not None and not signals.all_domains_normal:
-                return False, grounded, "dismissing a real incident needs every domain reported normal"
-            return True, grounded, ""
-        if share < 0.5:
-            return False, grounded, "supporting quotes are not found in the evidence"
-        return True, grounded, ""
 
     @staticmethod
     def _with_step(d: Diagnosis, text: str, **update: Any) -> Diagnosis:
@@ -372,7 +379,7 @@ class LLMDebate:
         penalty = min(MAX_STANDING_PENALTY, STANDING_PENALTY * len(res.standing))
         if res.ruling.verdict == "revised" and res.ruling.revised is not None:
             rev = res.ruling.revised
-            ok, grounded, why = self._accept_revision(rev, diagnosis, seen, signals)
+            ok, grounded, why = accept_revision(rev, diagnosis, seen, signals)
             if ok:
                 res.diagnosis = self._build_revised(diagnosis, res, rev, grounded)
                 res.verdict = "revised"

@@ -52,6 +52,8 @@ import pytest  # noqa: E402
         ("swarm", "incident_agent.agents.swarm.HierarchicalSwarm"),
         ("debate", "incident_agent.agents.llm_debate.DebatedOrchestrator"),
         ("swarm-debate", "incident_agent.agents.swarm.HierarchicalSwarm"),
+        ("swarm-full", "incident_agent.agents.swarm.HierarchicalSwarm"),
+        ("tot", "incident_agent.agents.tree_of_thought.ToTOrchestrator"),
     ],
 )
 def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, capsys, mode, target) -> None:
@@ -63,9 +65,10 @@ def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, caps
             return f"report-{mode}"
 
     class Fake:
-        def __init__(self, client, risk_guard=False, debate=False) -> None:
+        def __init__(self, client, risk_guard=False, debate=False, tot=False) -> None:
             seen["guard"] = risk_guard
             seen["debate"] = debate
+            seen["tot"] = tot
 
         def run(self, incident_id: str) -> Out:
             return Out()
@@ -75,7 +78,8 @@ def test_diagnose_selects_each_llm_agent_and_passes_risk_guard(monkeypatch, caps
     assert cli._cmd_diagnose(["INC-001", "--agent", mode, "--risk-guard"]) == 0
     assert capsys.readouterr().out == f"report-{mode}\n"
     assert seen["guard"] is True
-    assert seen.get("debate", False) is (mode == "swarm-debate")
+    assert seen.get("debate", False) is (mode in ("swarm-debate", "swarm-full"))
+    assert seen.get("tot", False) is (mode == "swarm-full")
 
 
 def test_diagnose_legacy_agent_needs_no_llm(monkeypatch, capsys) -> None:

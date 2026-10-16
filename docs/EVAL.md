@@ -59,6 +59,21 @@ Read the FP/FN block first: the debate is only worth keeping if false positives 
 not rise. Traces (`eval/traces/s8_debate/INC-xxx.json`, key `debate`) show every challenge, rebuttal, the arbiter
 ruling, discarded challenges and notes for each incident.
 
+## 4c. Stage 9 ablation (Tree-of-Thought + Plan-and-Solve)
+
+Orchestrator calls are cached, so the ToT run only pays for hypothesize + branches + solve.
+
+```powershell
+python -m incident_agent.eval.harness --agent llm_orchestrator --split dev --tag s9_base --trace
+python -m incident_agent.eval.harness --agent llm_tot --split dev --tag s9_tot --trace
+python -m incident_agent.eval.compare llm_orchestrator__s9_base llm_tot__s9_tot
+python -m incident_agent.eval.harness --agent llm_swarm_full --split dev --tag s9_full --trace
+```
+Keep ToT only if F1 / risk accuracy improve (or FP drops) without FN rising, and the cost multiplier is acceptable.
+Traces (`eval/traces/s9_tot/INC-xxx.json`, key `tot`) hold observations, every branch with plan, transcript,
+score parts and grounded findings, the winner, margin, verdict (`kept|switched|switch_rejected|skipped|gated_off|error`)
+and `original_root_cause`. Cost control: `TreeOfThought(skip_if_confidence_at_least=...)` skips confident diagnoses.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

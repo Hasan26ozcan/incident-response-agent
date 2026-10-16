@@ -36,6 +36,14 @@ Model: _(set GROQ_MODEL)_  Date: _(run date)_  Split: dev (n=14 after dataset v2
 
 Keep the debate only if FP drops and FN does not rise. With 3 false alarms in dev the evidence is indicative.
 
+## Stage 9: Tree-of-Thought
+
+| Run | F1 | Risk acc | FP | FN | Switched/rejected | Cost × |
+|-----|----|----------|----|----|-------------------|--------|
+| llm_orchestrator (s9_base) | — | — | —/3 | —/11 | n/a | 1.0 |
+| llm_tot (s9_tot) | — | — | —/3 | —/11 | —/— | — |
+| llm_swarm_full (s9_full) | — | — | —/3 | —/11 | —/— | — |
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).

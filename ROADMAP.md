@@ -65,7 +65,7 @@ Root-cause agent vs. "forensic examiner" agent debate.
 *Output:* before/after false-positive rate comparison.
 
 **Stage 9 — Tree-of-Thought + Plan-and-Solve**  
-*Status: legacy rule-based code, not yet audited.*
+*Status: implemented (LLM), ablation pending; legacy `tree_of_thought_agent.py` superseded and not trusted.*
 Parallel hypothesis branching on complex scenarios; most likely scenario
 selected.
 *Output:* measurable accuracy improvement on the gold set.
