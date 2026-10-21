@@ -44,6 +44,26 @@ Keep the debate only if FP drops and FN does not rise. With 3 false alarms in de
 | llm_tot (s9_tot) | — | — | —/3 | —/11 | —/— | — |
 | llm_swarm_full (s9_full) | — | — | —/3 | —/11 | —/— | — |
 
+## Stage 10: Hybrid retrieval (dev split, n=14, hashing embedder, numpy store)
+
+Measured in the development sandbox. Dense = lexical hashing baseline, **not** semantic. Re-run with `st:` to fill the real-embedder rows.
+
+| Query style | Mode | hit@1 | hit@3 | hit@5 | MRR | nDCG@10 |
+|-------------|------|------:|------:|------:|----:|--------:|
+| log | bm25 | 0.857 | 0.929 | 1.000 | 0.907 | 0.841 |
+| log | dense | 0.857 | 1.000 | 1.000 | 0.929 | 0.789 |
+| log | hybrid | 0.929 | 1.000 | 1.000 | 0.952 | 0.840 |
+| paraphrase | bm25 | 0.857 | 1.000 | 1.000 | 0.929 | 0.819 |
+| paraphrase | dense | 0.643 | 0.929 | 0.929 | 0.786 | 0.710 |
+| paraphrase | hybrid | 0.786 | 0.929 | 0.929 | 0.867 | 0.780 |
+| symptom | bm25 | 0.571 | 0.857 | 0.857 | 0.710 | 0.609 |
+| symptom | dense | 0.429 | 0.643 | 0.643 | 0.543 | 0.445 |
+| symptom | hybrid | 0.571 | 0.857 | 0.929 | 0.705 | 0.578 |
+
+Paired MRR deltas (hybrid minus bm25): log +0.045, paraphrase -0.061, symptom -0.005; every 95 % CI includes 0.
+Honest reading: with a lexical "dense" side, hybrid does not beat BM25 on this set; the gain has to come from a real
+embedder (pending). Log queries are saturated on dev (n=14), the `symptom` style is the one with headroom.
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).

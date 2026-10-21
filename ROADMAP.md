@@ -73,7 +73,7 @@ selected.
 ## Phase D — Memory & Retrieval (Stage 10–12)
 
 **Stage 10 — Vector DB & Hybrid Retrieval**  
-*Status: legacy code, not yet audited.*
+*Status: implemented (rewritten after audit, see `docs/AUDIT-STAGES-10-12.md`); real-embedder run pending. Legacy `retrieval/` superseded.*
 Qdrant setup, BM25 + dense + RRF (carrying over prior ARAP experience).
 *Output:* working hybrid search layer.
 

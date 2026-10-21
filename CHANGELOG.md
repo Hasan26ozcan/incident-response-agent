@@ -3,6 +3,16 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 10 — Hybrid Retrieval (rewrite)] — 2026-10
+### Added
+- `knowledge/` package: tokenizer/stemmer (identifiers and HTTP codes kept), Okapi BM25 with real term frequency and Lucene idf, `HashingEmbedder` (deterministic lexical baseline, sha256-based), optional `SentenceTransformerEmbedder` (`EMBEDDER=st:<model>`, `ml` extra), disk-cached embeddings, `NumpyVectorStore` and `QdrantVectorStore` (local, path or URL) with identical results, standard weighted RRF (absent rankers contribute nothing, ties by id), `HybridSearcher` with `bm25|dense|hybrid` modes, KB loader with strict front matter, log-query builder that never reads gold.
+- `data/kb/` (66 documents), `eval/retrieval_gold.json` (3 query styles per incident), `eval.retrieval_eval` (hit@k, MRR, nDCG@10, paired bootstrap deltas, test opening logged), `eval.validate_kb` (coverage and leak checks).
+- OpenSpec change 017; `docs/AUDIT-STAGES-10-12.md` (Stage 10 section).
+### Changed
+- `qdrant-client` added to the `dev` extras (tests use it; skipped when absent).
+### Notes
+Legacy retrieval code is left untouched but superseded: its BM25 ignored term frequency, its "dense" retriever was TF-IDF, it had no Qdrant and RRF counted absent documents.
+
 ## [Stage 9 — LLM Tree-of-Thought + Plan-and-Solve] — 2026-10
 ### Added
 - `agents/tree_of_thought.py`: hypothesize (verbatim-quoted observations, distinct alternatives each with a plan; current diagnosis is always H0), parallel branches that execute their plan with read-only tools and file a structured report, deterministic `score_branch` (only grounded items count), margin-gated switch (`SWITCH_MARGIN` 0.15, ties keep H0), solve step under the shared `accept_revision` policy, confidence cap on thin margins, optional confidence gate, failure isolation (`LLMConfigError` always propagates); `ToTOrchestrator`; `HierarchicalSwarm(tot=True)` (order ToT, debate, commander).

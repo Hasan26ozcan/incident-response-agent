@@ -74,6 +74,22 @@ Traces (`eval/traces/s9_tot/INC-xxx.json`, key `tot`) hold observations, every b
 score parts and grounded findings, the winner, margin, verdict (`kept|switched|switch_rejected|skipped|gated_off|error`)
 and `original_root_cause`. Cost control: `TreeOfThought(skip_if_confidence_at_least=...)` skips confident diagnoses.
 
+## 4d. Stage 10 retrieval evaluation (no LLM calls, no API cost)
+
+```powershell
+python -m incident_agent.eval.validate_kb
+python -m incident_agent.eval.retrieval_eval --split dev --tag s10_hash
+python -m incident_agent.eval.retrieval_eval --split dev --store qdrant --tag s10_hash_qdrant
+pip install -e ".[ml]"
+python -m incident_agent.eval.retrieval_eval --split dev --embedder st:BAAI/bge-small-en-v1.5 --tag s10_bge
+```
+Three query styles: `log` (built from logs/metrics/deploys), `paraphrase` (an engineer's description) and `symptom`
+(deliberately avoids runbook vocabulary; the headroom set). The `hashing` embedder is lexical, so its "dense" column
+is a baseline, not semantic search: only an `st:` run says whether dense retrieval adds anything. Tune (weights,
+`--rrf-k`, `--depth`) on dev only; `--split test` is logged in `eval/test_openings.log`. Results:
+`eval/results/retrieval__<tag>.json` (per-incident rows, summary, paired deltas, KB fingerprint).
+The KB and the queries are synthetic and written by the same author, so absolute numbers are an upper bound.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only
