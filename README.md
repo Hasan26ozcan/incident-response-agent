@@ -23,7 +23,8 @@ gold set. Where a stage has not been measured yet, the table below says so.
 | 8 | Debate (defender vs forensic examiner with tools, arbiter, deterministic acceptance) | implemented | pending ablation |
 | 9 | Tree-of-Thought + Plan-and-Solve (parallel hypothesis branches, deterministic scoring, margin-gated switch) | implemented | pending ablation |
 | 10 | Hybrid retrieval: Okapi BM25 + dense (numpy / Qdrant) + RRF over a 66-document knowledge base, retrieval eval | implemented (rewritten; legacy retrieval superseded) | dev baseline in `docs/RESULTS.md`; real embedder pending |
-| 11-12 | Reranking, episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
+| 11 | Reranking (overlap baseline, optional real cross-encoder, cache, blend with fused score; before/after eval) | implemented (rewritten; legacy reranker superseded) | dev baseline in `docs/RESULTS.md`; real cross-encoder pending |
+| 12 | Episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
 | 13-22 | MCP, Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
 
 "Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).

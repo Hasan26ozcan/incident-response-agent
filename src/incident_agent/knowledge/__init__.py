@@ -10,6 +10,15 @@ from incident_agent.knowledge.embedders import (
     build_embedder,
 )
 from incident_agent.knowledge.hybrid import Fused, HybridSearcher, SearchHit, rrf_fuse
+from incident_agent.knowledge.rerank import (
+    CachedReranker,
+    CrossEncoderReranker,
+    OverlapReranker,
+    Reranker,
+    RerankerError,
+    RerankingSearcher,
+    build_reranker,
+)
 from incident_agent.knowledge.vector_store import (
     NumpyVectorStore,
     QdrantVectorStore,
@@ -18,6 +27,13 @@ from incident_agent.knowledge.vector_store import (
 )
 
 __all__ = [
+    "CachedReranker",
+    "CrossEncoderReranker",
+    "OverlapReranker",
+    "Reranker",
+    "RerankerError",
+    "RerankingSearcher",
+    "build_reranker",
     "BM25Index",
     "CachedEmbedder",
     "CorpusError",

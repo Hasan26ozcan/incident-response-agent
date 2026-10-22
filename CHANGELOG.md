@@ -3,6 +3,14 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 11 — Reranking (rewrite)] — 2026-10
+### Added
+- `knowledge/rerank.py`: `Reranker` protocol, `OverlapReranker` (IDF-weighted query coverage + bigram coverage; lexical baseline), `CrossEncoderReranker` (opt-in `RERANKER=ce:<model>`, default `cross-encoder/ms-marco-MiniLM-L-6-v2`, `ml` extra), `CachedReranker` (`RERANK_CACHE_DIR`), `RerankingSearcher` (`rerank` mode: hybrid top-N, rescore, optional `alpha` blend with the min-max normalised fused score; ties keep hybrid order).
+- `eval.retrieval_eval`: `--reranker`, `--candidates`, `--alpha`; adds a `rerank` mode and paired `rerank_vs_hybrid` deltas (MRR, hit@1, nDCG@10).
+- `tests/test_rerank.py`; mutation-checked (22 mutants killed; one equivalent guard removed).
+### Notes
+Legacy reranker was an untrained random-weight MLP (seed 42) and its "BM25" feature ignored the query; superseded, left in place.
+
 ## [Stage 10 — Hybrid Retrieval (rewrite)] — 2026-10
 ### Added
 - `knowledge/` package: tokenizer/stemmer (identifiers and HTTP codes kept), Okapi BM25 with real term frequency and Lucene idf, `HashingEmbedder` (deterministic lexical baseline, sha256-based), optional `SentenceTransformerEmbedder` (`EMBEDDER=st:<model>`, `ml` extra), disk-cached embeddings, `NumpyVectorStore` and `QdrantVectorStore` (local, path or URL) with identical results, standard weighted RRF (absent rankers contribute nothing, ties by id), `HybridSearcher` with `bm25|dense|hybrid` modes, KB loader with strict front matter, log-query builder that never reads gold.

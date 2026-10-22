@@ -90,6 +90,19 @@ is a baseline, not semantic search: only an `st:` run says whether dense retriev
 `eval/results/retrieval__<tag>.json` (per-incident rows, summary, paired deltas, KB fingerprint).
 The KB and the queries are synthetic and written by the same author, so absolute numbers are an upper bound.
 
+## 4e. Stage 11 reranking evaluation (no LLM calls, no API cost)
+
+```powershell
+python -m incident_agent.eval.retrieval_eval --split dev --reranker overlap --tag s11_overlap
+pip install -e ".[ml]"
+python -m incident_agent.eval.retrieval_eval --split dev --embedder st:BAAI/bge-small-en-v1.5 --reranker ce:cross-encoder/ms-marco-MiniLM-L-6-v2 --tag s11_ce
+python -m incident_agent.eval.retrieval_eval --split dev --embedder st:BAAI/bge-small-en-v1.5 --reranker ce --alpha 0.3 --tag s11_ce_a03
+```
+The report adds a `rerank` row and `rerank_vs_hybrid_*` paired deltas with bootstrap CIs. Keep the reranker only if
+MRR/hit@1 improve with a CI clear of zero on dev. Choose `--alpha`/`--candidates` on dev only, and do not hunt for the
+best alpha on 14 incidents: pick from the pre-registered values 0, 0.3, 0.5. `overlap` is lexical, so only `ce:` answers
+the neural-reranker question. Set `RERANK_CACHE_DIR` to cache scores between runs.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

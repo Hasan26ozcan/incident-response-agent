@@ -13,6 +13,7 @@ import sys
 from incident_agent import __version__
 from incident_agent.agents.react_agent import ReActAgent
 from incident_agent.llm.client import LLMUnavailable, _load_dotenv
+from incident_agent.schemas import CommanderDiagnosis, Diagnosis
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,6 +49,7 @@ def _cmd_diagnose(args: list[str]) -> int:
     if "--agent" in args:
         mode = args[args.index("--agent") + 1]
     guard = "--risk-guard" in args
+    diagnosis: Diagnosis | CommanderDiagnosis
     if mode in ("llm", "orchestrator", "debate", "tot", "swarm", "swarm-debate", "swarm-full"):
         from incident_agent.llm import build_client
 

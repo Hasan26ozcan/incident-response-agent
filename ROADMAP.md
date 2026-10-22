@@ -78,7 +78,7 @@ Qdrant setup, BM25 + dense + RRF (carrying over prior ARAP experience).
 *Output:* working hybrid search layer.
 
 **Stage 11 — Reranking**  
-*Status: legacy code, not yet audited.*
+*Status: implemented (rewritten after audit, see `docs/AUDIT-STAGES-10-12.md`); real cross-encoder run pending. Legacy `retrieval/reranker.py` superseded.*
 Cross-encoder reranker added; retrieval quality measured.
 *Output:* before/after relevance comparison report.
 

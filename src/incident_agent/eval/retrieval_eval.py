@@ -20,6 +20,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,6 +32,7 @@ from incident_agent.knowledge.corpus import KB_DIR, KBDoc, load_corpus
 from incident_agent.knowledge.embedders import Embedder, EmbedderError, build_embedder
 from incident_agent.knowledge.hybrid import DEFAULT_RRF_K, MODES, HybridSearcher, SearchHit
 from incident_agent.knowledge.query import INCIDENTS_DIR, QueryError, build_log_query
+from incident_agent.knowledge.rerank import ALL_MODES, RERANK_MODE, RerankerError, RerankingSearcher, build_reranker
 from incident_agent.knowledge.vector_store import VectorStoreError, build_store
 
 GOLD_FILE = ROOT / "eval" / "retrieval_gold.json"
@@ -89,7 +91,7 @@ def query_for(incident_id: str, style: str, gold: Mapping[str, Mapping[str, Any]
 
 
 def evaluate(
-    searcher: HybridSearcher,
+    searcher: HybridSearcher | RerankingSearcher,
     docs: Sequence[KBDoc],
     gold: Mapping[str, Mapping[str, Any]],
     ids: Sequence[str],
@@ -192,6 +194,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rrf-k", type=int, default=DEFAULT_RRF_K)
     ap.add_argument("--depth", type=int, default=20, help="candidates each retriever contributes to fusion")
     ap.add_argument("--weights", default=None, help="RRF weights, e.g. bm25=1,dense=2")
+    ap.add_argument(
+        "--reranker",
+        default=None,
+        help="add a 'rerank' mode: overlap | ce:<model> (default: $RERANKER; off when neither is set)",
+    )
+    ap.add_argument("--candidates", type=int, default=20, help="hybrid candidates handed to the reranker")
+    ap.add_argument("--alpha", type=float, default=0.0, help="blend: 0 = reranker only, 1 = fused retrieval score only")
     ap.add_argument("--tag", default=None)
     args = ap.parse_args(argv)
 
@@ -203,8 +212,14 @@ def main(argv: list[str] | None = None) -> int:
         searcher = HybridSearcher(
             embedder, build_store(args.store), rrf_k=args.rrf_k, depth=args.depth, weights=weights
         )
-        searcher.index(docs)
-    except (EmbedderError, VectorStoreError, GoldError, ValueError, OSError) as exc:
+        reranker_spec = args.reranker or os.environ.get("RERANKER")
+        top: HybridSearcher | RerankingSearcher = searcher
+        if reranker_spec:
+            top = RerankingSearcher(
+                searcher, build_reranker(reranker_spec), candidates=args.candidates, alpha=args.alpha
+            )
+        top.index(docs)
+    except (EmbedderError, RerankerError, VectorStoreError, GoldError, ValueError, OSError) as exc:
         print(f"ERROR: {exc}")
         return 2
 
@@ -219,7 +234,9 @@ def main(argv: list[str] | None = None) -> int:
         print("NOTE: TEST SET OPENED (logged in eval/test_openings.log). Do not tune on these results.")
     styles = STYLES if args.style == "both" else (args.style,)
     try:
-        report = evaluate(searcher, docs, gold, ids, styles, MODES, incidents_dir=INCIDENTS_DIR)
+        report = evaluate(
+            top, docs, gold, ids, styles, ALL_MODES if reranker_spec else MODES, incidents_dir=INCIDENTS_DIR
+        )
     except (GoldError, QueryError) as exc:
         print(f"ERROR: {exc}")
         return 2
@@ -231,6 +248,9 @@ def main(argv: list[str] | None = None) -> int:
         "rrf_k": args.rrf_k,
         "depth": args.depth,
         "weights": weights,
+        "reranker": getattr(top, "reranker", None) and top.reranker.name,  # type: ignore[union-attr]
+        "candidates": args.candidates if reranker_spec else None,
+        "alpha": args.alpha if reranker_spec else None,
         "n_docs": len(docs),
         "kb_fingerprint": kb_fingerprint(),
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -239,13 +259,26 @@ def main(argv: list[str] | None = None) -> int:
         style: {
             "hybrid_vs_bm25_mrr": deltas(report["incidents"], style, "hybrid", "bm25"),
             "hybrid_vs_dense_mrr": deltas(report["incidents"], style, "hybrid", "dense"),
+            **(
+                {
+                    f"{RERANK_MODE}_vs_hybrid_{m.replace('@', '')}": deltas(
+                        report["incidents"], style, RERANK_MODE, "hybrid", m
+                    )
+                    for m in ("mrr", "hit@1", "ndcg@10")
+                }
+                if reranker_spec
+                else {}
+            ),
         }
         for style in styles
     }
     out = result_path(args.tag)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2))
-    print(f"embedder={embedder.name} store={type(searcher.store).__name__} docs={len(docs)} incidents={len(ids)}")
+    print(
+        f"embedder={embedder.name} store={type(searcher.store).__name__} reranker={report['meta']['reranker']} "
+        f"docs={len(docs)} incidents={len(ids)}"
+    )
     print(format_table(report))
     for style, d in report["deltas"].items():
         for name, v in d.items():

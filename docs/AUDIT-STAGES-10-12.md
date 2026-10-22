@@ -14,6 +14,17 @@ Status: Stage 10 audited and rewritten (this change). Stages 11 and 12 not yet a
 
 Resolution: new `knowledge/` package and retrieval eval (OpenSpec 017). Legacy files are left in place but superseded.
 
-## Stage 11-12 (preliminary, to be confirmed in their own audits)
+## Stage 11 findings (legacy `retrieval/reranker.py`, `agents/reranker_agent.py`)
+
+| # | Finding | Consequence |
+|--:|---------|-------------|
+| 1 | The "cross-encoder" is an MLP with random fixed weights (`RandomState(42)`), never trained | scores are noise shaped by TF-IDF features; not a learned relevance model |
+| 2 | Its "BM25" feature is computed over corpus tokens, independent of the query | same value for every query |
+| 3 | Reranker agent re-instantiated the legacy retriever on every search and used its own tokenizer | slow, inconsistent with Stage 10 |
+| 4 | No relevance labels, so "before/after" had nothing to be measured against | claim unmeasured |
+
+Resolution: `knowledge/rerank.py` plus paired before/after evaluation (OpenSpec 018).
+
+## Stage 12 (preliminary, to be confirmed in its own audit)
 
 * Stage 12 legacy compared answers by gold string equality and leaked gold text into memory.

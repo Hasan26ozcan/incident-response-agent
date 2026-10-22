@@ -64,6 +64,23 @@ Paired MRR deltas (hybrid minus bm25): log +0.045, paraphrase -0.061, symptom -0
 Honest reading: with a lexical "dense" side, hybrid does not beat BM25 on this set; the gain has to come from a real
 embedder (pending). Log queries are saturated on dev (n=14), the `symptom` style is the one with headroom.
 
+## Stage 11: Reranking (dev split, n=14, hashing embedder, overlap reranker, 20 candidates)
+
+Sandbox measurement. The overlap reranker is lexical; a real cross-encoder run is pending.
+
+| Query style | Mode | hit@1 | hit@3 | MRR | nDCG@10 |
+|-------------|------|------:|------:|----:|--------:|
+| log | hybrid | 0.929 | 1.000 | 0.952 | 0.840 |
+| log | rerank (alpha 0) | 0.929 | 0.929 | 0.941 | 0.834 |
+| paraphrase | hybrid | 0.786 | 0.929 | 0.867 | 0.780 |
+| paraphrase | rerank (alpha 0) | 0.929 | 1.000 | 0.952 | 0.837 |
+| symptom | hybrid | 0.571 | 0.857 | 0.705 | 0.578 |
+| symptom | rerank (alpha 0) | 0.429 | 0.714 | 0.586 | 0.546 |
+
+Paired MRR deltas (rerank minus hybrid): log -0.012, paraphrase +0.085, symptom -0.119; every 95 % CI includes 0.
+Honest reading: the lexical reranker helps where the query shares words with the document and hurts on vague
+`symptom` queries. No significant effect either way; this is a baseline, not evidence for reranking.
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).
