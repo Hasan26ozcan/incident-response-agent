@@ -3,6 +3,15 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 12 — Episodic Memory (rewrite)] — 2026-10
+### Added
+- `memory/episodic.py`: `Episode` (observation, resolved class, first diagnosed class, deterministic `Reflection`), `EpisodicMemory` (JSONL persistence in an explicit directory, atomic writes, hybrid recall over observations, `predict` with a dense-cosine similarity for gating, `lessons_for`, `forget`), injectable clock.
+- `data/make_recurrences.py` + `data/recurrence/` + `eval/recurrence_gold.json`: 14 recurrences (each dev failure again, new seed, different service). Pinned v1/v2 data untouched.
+- `eval.memory_eval`: replay history (predict, then write the resolved episode), classify queries by kb / memory / combined, report coverage, precision, rescued, misled, first-encounter-wrong subset, novel-class control, paired bootstrap; `--queries test` is the logged false-recall control.
+- Tests: `test_episodic_memory.py`, `test_memory_eval.py` (mutation-checked; 33 mutants killed, 1 equivalent guard removed).
+### Notes
+The main dataset has no same-class recurrence inside a split (INC-002 and INC-020 are split across dev/test) and all incidents share one window start, so "better on the second encounter" could not be measured without the recurrence set.
+
 ## [Stage 11 — Reranking (rewrite)] — 2026-10
 ### Added
 - `knowledge/rerank.py`: `Reranker` protocol, `OverlapReranker` (IDF-weighted query coverage + bigram coverage; lexical baseline), `CrossEncoderReranker` (opt-in `RERANKER=ce:<model>`, default `cross-encoder/ms-marco-MiniLM-L-6-v2`, `ml` extra), `CachedReranker` (`RERANK_CACHE_DIR`), `RerankingSearcher` (`rerank` mode: hybrid top-N, rescore, optional `alpha` blend with the min-max normalised fused score; ties keep hybrid order).

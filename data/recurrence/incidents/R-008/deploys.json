@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:57:00+00:00",
+    "service": "stock-service",
+    "version": "3.1.0",
+    "description": "stock-service: readiness probe path changed from /healthz to /health"
+  }
+]

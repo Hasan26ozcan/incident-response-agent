@@ -1,0 +1,75 @@
+{
+  "_note": "Stage 12 recurrence set; see data/make_recurrences.py",
+  "incidents": {
+    "R-001": {
+      "recurrence_of": "INC-001",
+      "primary": "cpu_exhaustion",
+      "is_false_alarm": false
+    },
+    "R-002": {
+      "recurrence_of": "INC-002",
+      "primary": "memory_leak",
+      "is_false_alarm": false
+    },
+    "R-003": {
+      "recurrence_of": "INC-003",
+      "primary": "cascading_failure",
+      "is_false_alarm": false
+    },
+    "R-004": {
+      "recurrence_of": "INC-005",
+      "primary": "db_pool_exhaustion",
+      "is_false_alarm": false
+    },
+    "R-005": {
+      "recurrence_of": "INC-007",
+      "primary": "network_partition",
+      "is_false_alarm": false
+    },
+    "R-006": {
+      "recurrence_of": "INC-008",
+      "primary": "third_party_outage",
+      "is_false_alarm": false
+    },
+    "R-007": {
+      "recurrence_of": "INC-010",
+      "primary": "tls_cert_expiry",
+      "is_false_alarm": false
+    },
+    "R-008": {
+      "recurrence_of": "INC-012",
+      "primary": "k8s_crashloop",
+      "is_false_alarm": false
+    },
+    "R-009": {
+      "recurrence_of": "INC-015",
+      "primary": "config_drift",
+      "is_false_alarm": false
+    },
+    "R-010": {
+      "recurrence_of": "INC-019",
+      "primary": "false_alarm",
+      "is_false_alarm": true
+    },
+    "R-011": {
+      "recurrence_of": "INC-021",
+      "primary": "false_alarm_maintenance",
+      "is_false_alarm": true
+    },
+    "R-012": {
+      "recurrence_of": "INC-022",
+      "primary": "false_alarm_batch",
+      "is_false_alarm": true
+    },
+    "R-013": {
+      "recurrence_of": "INC-025",
+      "primary": "slow_memory_leak",
+      "is_false_alarm": false
+    },
+    "R-014": {
+      "recurrence_of": "INC-026",
+      "primary": "post_maintenance_regression",
+      "is_false_alarm": false
+    }
+  }
+}

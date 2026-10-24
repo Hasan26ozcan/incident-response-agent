@@ -81,6 +81,26 @@ Paired MRR deltas (rerank minus hybrid): log -0.012, paraphrase +0.085, symptom 
 Honest reading: the lexical reranker helps where the query shares words with the document and hurts on vague
 `symptom` queries. No significant effect either way; this is a baseline, not evidence for reranking.
 
+## Stage 12: Episodic memory (dev replay, hashing embedder, recurrence set n=14, k=3, min-similarity 0.6)
+
+Sandbox measurement.
+
+| Metric | Value |
+|--------|------:|
+| kb-only accuracy | 0.857 |
+| combined (kb + memory) accuracy | 0.929 |
+| memory coverage | 0.929 |
+| memory precision when answering | 1.000 |
+| rescued / misled | 1 / 0 |
+| combined minus kb (paired, 95 % bootstrap CI) | +0.071 (0.0, 0.214) |
+| kb misdiagnosed at first encounter (replay) | 1 of 14 |
+| dev control: memory answered with its own episode removed | 0 of 14 |
+
+Honest reading: memory recognises the recurrence in 13 of 14 cases and never misled, but the knowledge base was already
+right on 12 of 14, so there was little to gain; the interval includes 0. The first-encounter-wrong subset has n=1 and did
+not improve (that recurrence was the one memory missed, cosine 0.41). The test-split control (`--queries test`) has not
+been run by the maintainers yet.
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).

@@ -103,6 +103,22 @@ MRR/hit@1 improve with a CI clear of zero on dev. Choose `--alpha`/`--candidates
 best alpha on 14 incidents: pick from the pre-registered values 0, 0.3, 0.5. `overlap` is lexical, so only `ce:` answers
 the neural-reranker question. Set `RERANK_CACHE_DIR` to cache scores between runs.
 
+## 4f. Stage 12 episodic-memory evaluation (no LLM calls, no API cost)
+
+```powershell
+python data/make_recurrences.py          # only to regenerate; the files are committed and a test checks they match
+python -m incident_agent.eval.memory_eval --tag s12_hash
+python -m incident_agent.eval.memory_eval --embedder st:BAAI/bge-small-en-v1.5 --tag s12_bge
+python -m incident_agent.eval.memory_eval --queries test --tag s12_control   # logged test opening; milestone only
+```
+Protocol: dev incidents are replayed in order (predict first, then write the resolved episode); each recurrence is
+classified by the knowledge base alone, by memory alone and by `combined` (memory when the best episode's dense cosine
+is at least `--min-similarity`, else the knowledge base). Read: accuracy, `rescued`/`misled`, coverage and precision of
+memory, the first-encounter-wrong subset, and the novel-class control (memory must stay quiet on a class it has never
+seen). `--min-similarity 0.6` was chosen on dev only for the hashing embedder; for `st:` re-derive it with a dev-only run
+(top cosine on dev incidents without their own episode versus on recurrences) before trusting it. The recurrence set is a
+synthetic variant of the same generator, so results are an upper bound.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

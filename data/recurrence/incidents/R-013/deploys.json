@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:30:00+00:00",
+    "service": "analytics-service",
+    "version": "3.2.0",
+    "description": "analytics-service: added in-process memoization of dashboard query results (no size bound)"
+  }
+]

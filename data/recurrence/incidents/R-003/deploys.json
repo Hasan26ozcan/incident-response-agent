@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T23:50:00+00:00",
+    "service": "cart-api",
+    "version": "4.0.1",
+    "description": "billing-service: switched TLS provider for card network integration"
+  }
+]

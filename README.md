@@ -24,7 +24,7 @@ gold set. Where a stage has not been measured yet, the table below says so.
 | 9 | Tree-of-Thought + Plan-and-Solve (parallel hypothesis branches, deterministic scoring, margin-gated switch) | implemented | pending ablation |
 | 10 | Hybrid retrieval: Okapi BM25 + dense (numpy / Qdrant) + RRF over a 66-document knowledge base, retrieval eval | implemented (rewritten; legacy retrieval superseded) | dev baseline in `docs/RESULTS.md`; real embedder pending |
 | 11 | Reranking (overlap baseline, optional real cross-encoder, cache, blend with fused score; before/after eval) | implemented (rewritten; legacy reranker superseded) | dev baseline in `docs/RESULTS.md`; real cross-encoder pending |
-| 12 | Episodic memory | legacy rule-based code, **not yet audited or rewritten** | no |
+| 12 | Episodic memory: post-mortem episodes, deterministic reflection, hybrid recall, recurrence evaluation (legacy memory/store superseded) | implemented (rewritten) | dev recurrence result in `docs/RESULTS.md`; n=14 |
 | 13-22 | MCP, Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
 
 "Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).
@@ -64,12 +64,14 @@ Short version (full runbook: [`docs/EVAL.md`](./docs/EVAL.md)):
 3. Compare runs with paired bootstrap CIs: `python -m incident_agent.eval.compare <run_a> <run_b>`.
 4. Optional LLM judge with a *different* model family: `python -m incident_agent.eval.judge --tag <tag> --split dev`.
 5. Retrieval (Stage 10): `python -m incident_agent.eval.validate_kb`, then `python -m incident_agent.eval.retrieval_eval --split dev --tag s10_hash`.
-6. The **test** split is opened only at milestones (each opening is logged in `eval/test_openings.log`).
+6. Memory (Stage 12): `python -m incident_agent.eval.memory_eval --tag s12_hash` (recurrence set, no API cost).
+7. The **test** split is opened only at milestones (each opening is logged in `eval/test_openings.log`).
 
 ## Layout
 
 ```
 data/            generator + 28 synthetic incidents (INC-001..028; 021-028 are the Stage 8 false-alarm/trap set)
+data/recurrence/ Stage 12 recurrence set: each dev failure again on a different service (`data/make_recurrences.py`)
 data/kb/         Stage 10 knowledge base: runbooks, post-mortems and reference notes (66 Markdown docs)
 eval/gold/       gold answers (kept apart from data/), splits.json (frozen dev/test)
 eval/results/    tagged run results (git-ignored); eval/traces/ per-incident traces (git-ignored)
@@ -78,6 +80,7 @@ src/incident_agent/
   tools/         IncidentToolbox (validated tool args, per-worker allow-lists)
   agents/        LLM line + legacy line (see above)
   eval/          harness, compare, judge, preflight, retrieval_eval, validate_kb
+  memory/        Stage 12: episodic memory (`episodic.py`; `store.py` is legacy, unaudited)
   knowledge/     Stage 10: tokenizer, BM25, embedders, vector stores (numpy/Qdrant), RRF hybrid search, KB loader, log-query builder
   schemas/ prompts/ retrieval/ workflows/ memory/   (retrieval/ and memory/ are legacy, unaudited)
 openspec/        spec, risk classification, per-change proposals (changes/NNN-*)

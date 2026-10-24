@@ -83,7 +83,7 @@ Cross-encoder reranker added; retrieval quality measured.
 *Output:* before/after relevance comparison report.
 
 **Stage 12 — Episodic Memory & Self-Improvement (Hermes-style)**  
-*Status: legacy code, not yet audited.*
+*Status: implemented (rewritten after audit, see `docs/AUDIT-STAGES-10-12.md`); measured on a dev recurrence set (n=14). Agent integration pending. Legacy `memory/store.py` superseded.*
 Every resolved incident is written up as a post-mortem, embedded, and
 added to memory. Reflection loop flags misdiagnoses and updates strategy.
 *Output:* measurable improvement (time/accuracy) on second encounter.

@@ -1,0 +1,9 @@
+[
+  {
+    "deploy_id": "deploy-001",
+    "timestamp": "2026-02-28T21:00:00+00:00",
+    "service": "purchase-api",
+    "version": "maint-CHG-5012",
+    "description": "PLANNED MAINTENANCE CHG-5012 (approved window 00:20-00:30): rolling restart with configuration refresh"
+  }
+]
