@@ -91,6 +91,7 @@ added to memory. Reflection loop flags misdiagnoses and updates strategy.
 ## Phase E — Tools & Integration (Stage 13–16)
 
 **Stage 13 — MCP Servers**
+*Status: implemented (`mcp_servers/`); agent wiring so far only for `llm_react` (`--toolbox mcp`).*
 Log / metrics / deploy / sandbox script execution — each its own MCP
 server.
 *Output:* agents can pull data from simulated live systems.

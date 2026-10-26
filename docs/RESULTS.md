@@ -101,6 +101,13 @@ right on 12 of 14, so there was little to gain; the interval includes 0. The fir
 not improve (that recurrence was the one memory missed, cosine 0.41). The test-split control (`--queries test`) has not
 been run by the maintainers yet.
 
+## Stage 13: MCP servers
+
+No new diagnosis score is claimed. Verified in the sandbox: for all 28 incidents the five original tools return
+byte-identical text and identical error semantics through MCP; a scripted `llm_react` run through MCP issues
+exactly the same LLM requests (same cache keys) and gives the same diagnosis as the direct toolbox. The real-model
+check (`--toolbox mcp` reproducing a cached dev run with zero API calls) is pending on the maintainers' side.
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).

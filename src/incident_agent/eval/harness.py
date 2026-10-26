@@ -229,16 +229,23 @@ def react_baseline(incident_id: str) -> DiagnosisResult:
     )
 
 
-def make_llm_react(temperature: float = 0.0, risk_guard: bool = False) -> Callable[[str], DiagnosisResult]:
+def make_llm_react(
+    temperature: float = 0.0, risk_guard: bool = False, toolbox: str = "direct"
+) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the LLM ReAct agent (needs GROQ_API_KEY; responses are disk-cached)."""
     from incident_agent.agents.llm_react_agent import LLMReActAgent
     from incident_agent.llm import TrackingClient, build_client
 
     shared = build_client()  # shared so cache/fallback state spans the whole run
+    factory = None
+    if toolbox == "mcp":  # Stage 13: the same five tools, served by the MCP servers (identical output and prompts)
+        from incident_agent.mcp_servers.client import McpToolbox
+
+        factory = McpToolbox
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
-        agent = LLMReActAgent(client, temperature=temperature, risk_guard=risk_guard)
+        agent = LLMReActAgent(client, temperature=temperature, risk_guard=risk_guard, toolbox_factory=factory)
         trace: dict[str, Any] = {}
         try:
             d = agent.run(incident_id)
@@ -484,11 +491,15 @@ ADAPTER_NAMES = (
 )
 
 
-def make_adapter(name: str, temperature: float = 0.0, risk_guard: bool = False) -> Callable[[str], DiagnosisResult]:
+def make_adapter(
+    name: str, temperature: float = 0.0, risk_guard: bool = False, toolbox: str = "direct"
+) -> Callable[[str], DiagnosisResult]:
+    if toolbox != "direct" and name != "llm_react":
+        raise ValueError("--toolbox mcp is only wired into llm_react so far")
     if name == "react_baseline":
         return react_baseline
     if name == "llm_react":
-        return make_llm_react(temperature, risk_guard)
+        return make_llm_react(temperature, risk_guard, toolbox)
     if name == "llm_orchestrator":
         return make_llm_orchestrator(temperature, risk_guard=risk_guard)
     if name == "llm_swarm":
@@ -544,6 +555,12 @@ def main(argv: list[str] | None = None) -> int:
         help="raise (never lower) the risk tier when the recommendation names a restart/rollback/scale/etc. "
         "Post-processing only: re-uses cached LLM responses, so it costs no API calls",
     )
+    ap.add_argument(
+        "--toolbox",
+        default="direct",
+        choices=["direct", "mcp"],
+        help="llm_react only: read incident data in-process (direct) or through the MCP servers (mcp)",
+    )
     ap.add_argument("--resume", action="store_true", help="skip incidents already finished in the result file")
     args = ap.parse_args(argv)
 
@@ -566,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
         "split": "ids" if args.ids else args.split,
         "temperature": args.temperature,
         "risk_guard": args.risk_guard,
+        "toolbox": args.toolbox,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     done: dict[str, IncidentScore] = {}
@@ -575,7 +593,14 @@ def main(argv: list[str] | None = None) -> int:
                 done[row["incident_id"]] = IncidentScore(**row)
         print(f"resuming: {len(done)} incident(s) already finished")
 
-    diagnose = make_adapter(args.agent, args.temperature, args.risk_guard)
+    try:
+        if args.toolbox == "direct":
+            diagnose = make_adapter(args.agent, args.temperature, args.risk_guard)
+        else:
+            diagnose = make_adapter(args.agent, args.temperature, args.risk_guard, args.toolbox)
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 2
     trace_dir = TRACE_DIR / (args.tag or args.agent)
     scores_so_far: list[IncidentScore] = list(done.values())
 

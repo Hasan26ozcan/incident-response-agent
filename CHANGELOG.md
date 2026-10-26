@@ -3,6 +3,18 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 13 — MCP Servers] — 2026-10
+### Added
+- `mcp_servers/`: four MCP servers, one per data source, each bound to one incident (the id is not a tool argument): `logs` (get_incident_meta, log_overview, search_logs, log_window), `metrics` (get_metric_summary, list_metrics, query_metric), `deploys` (get_recent_deploys), `sandbox` (list_diagnostics, run_diagnostic). Failures are MCP tool errors tagged `[bad_args]` or `[unavailable]`.
+- `backend.py`: tool logic; the five original tools are delegated to `IncidentToolbox`, so MCP output is byte-identical. New: `log_window`, `list_metrics`, `query_metric` (offsetless timestamps are read as UTC).
+- `diagnostics.py`: four allow-listed read-only scripts (`error_timeline`, `first_seen`, `metric_vs_errors`, `service_breakdown`); each run is a separate isolated Python process (no shell, no code, validated arguments, minimal environment without API keys, timeout kill, output cap, CPU/memory rlimits on POSIX).
+- `client.McpToolbox`: `IncidentToolbox` interface over MCP (in-memory or stdio transport), synchronous via a background event loop; originals keep the unchanged `TOOL_SPECS`, `extended=True` adds the MCP-only tools.
+- `LLMReActAgent(toolbox_factory=...)` and harness `--toolbox direct|mcp` (llm_react only); the toolbox is closed after the run.
+- Tests: `test_mcp_servers.py`, `test_mcp_integration.py` (28-incident parity, identical LLM requests through MCP, stdio round trip, timeouts, error mapping, mutation-checked).
+- `mcp` optional extra (`mcp>=2.2,<3`).
+### Notes
+Unknown extra arguments are ignored by the MCP layer (IncidentToolbox rejects them); a missing required argument is rejected by the MCP layer with different wording. Both are still `bad_args`.
+
 ## [Stage 12 — Episodic Memory (rewrite)] — 2026-10
 ### Added
 - `memory/episodic.py`: `Episode` (observation, resolved class, first diagnosed class, deterministic `Reflection`), `EpisodicMemory` (JSONL persistence in an explicit directory, atomic writes, hybrid recall over observations, `predict` with a dense-cosine similarity for gating, `lessons_for`, `forget`), injectable clock.

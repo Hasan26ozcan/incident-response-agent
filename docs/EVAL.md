@@ -119,6 +119,19 @@ seen). `--min-similarity 0.6` was chosen on dev only for the hashing embedder; f
 (top cosine on dev incidents without their own episode versus on recurrences) before trusting it. The recurrence set is a
 synthetic variant of the same generator, so results are an upper bound.
 
+## 4g. Stage 13 MCP servers (no extra API cost)
+
+```powershell
+pip install -e ".[mcp]"
+python -m pytest -q tests/test_mcp_servers.py tests/test_mcp_integration.py
+python -m incident_agent.eval.harness --agent llm_react --toolbox mcp --split dev --tag s13_mcp
+python -m incident_agent.eval.compare llm_react__v0_dev llm_react__s13_mcp
+```
+The agent sees byte-identical tool output and the unchanged tool specs, so its LLM requests are the same as with the
+direct toolbox and the cached answers of an earlier `llm_react` dev run are reused: `s13_mcp` should reproduce
+`v0_dev` with zero new API calls. Any difference is a bug in the MCP layer. To talk to a server by hand (any MCP
+client can): `python -m incident_agent.mcp_servers logs --incident INC-001` (stdio).
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

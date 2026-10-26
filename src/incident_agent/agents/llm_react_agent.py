@@ -8,6 +8,7 @@ evidence grounding check against what the tools actually returned.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -77,8 +78,10 @@ class LLMReActAgent:
         max_bad_calls: int = 4,
         max_duplicates: int = 3,
         risk_guard: bool = False,
+        toolbox_factory: Callable[..., Any] | None = None,
     ) -> None:
         self.client = client
+        self.toolbox_factory = toolbox_factory  # default IncidentToolbox; e.g. McpToolbox for the MCP servers
         self.max_steps = max_steps
         self.max_replans = max_replans
         self.max_repairs = max_repairs
@@ -116,7 +119,7 @@ class LLMReActAgent:
 
     # -- main loop (Stage 3) --------------------------------------------------
     def run(self, incident_id: str) -> Diagnosis:
-        toolbox = IncidentToolbox(incident_id, fail_tools=self.fail_tools)
+        toolbox = (self.toolbox_factory or IncidentToolbox)(incident_id, fail_tools=self.fail_tools)
         self.plan_history, self.unavailable, self.transcript, self.degraded = [], set(), [], None
         try:
             plan = self._plan(incident_id)
@@ -158,6 +161,10 @@ class LLMReActAgent:
         except LLMUnavailable as exc:
             self.degraded = f"investigation interrupted: {exc}"
             self.transcript.append("[investigation interrupted: provider unavailable]")
+        finally:
+            close = getattr(toolbox, "close", None)
+            if callable(close):
+                close()
         return self._finalize(incident_id)
 
     # -- final structured answer (Stage 4) -----------------------------------
