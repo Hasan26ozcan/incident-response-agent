@@ -97,6 +97,7 @@ server.
 *Output:* agents can pull data from simulated live systems.
 
 **Stage 14 — MCP Discovery & Resource Lifecycle**
+*Status: implemented (`mcp_servers/discovery.py`, `hub.py`, `resources.py`); demo is `python -m incident_agent.mcp_servers.demo`. Agents do not use the hub yet.*
 Agents discover which tools are available; context negotiation. Explicit
 management of connection open/close, resource subscriptions, and stale
 resource cleanup.

@@ -132,6 +132,30 @@ direct toolbox and the cached answers of an earlier `llm_react` dev run are reus
 `v0_dev` with zero new API calls. Any difference is a bug in the MCP layer. To talk to a server by hand (any MCP
 client can): `python -m incident_agent.mcp_servers logs --incident INC-001` (stdio).
 
+## 4h. Stage 14 MCP discovery demo (no API key, no network)
+
+```powershell
+python -m pytest -q tests/test_mcp_discovery.py
+python -m incident_agent.mcp_servers.demo            # or: ... demo INC-005
+```
+The demo starts the four agent-facing servers plus a simulated live source and prints: (1) what discovery found,
+(2) which tools an agent gets when it wants five but can afford three, (3) a feed update pushed by the server that drops
+exactly the stale cache entry, (4) a tool that appears at runtime and is routed without any client change, (5) a source
+that is decommissioned and whose cached resource is removed, (6) explicit close (second close is a no-op) and the
+`opened`/`closed` counts at exit. Expected key lines:
+
+```
+granted: search_logs <- logs, get_metric_summary <- metrics, run_diagnostic <- sandbox
+dropped for budget: get_recent_deploys
+not offered (yet): annotate
+server pushed 'resource updated' -> the cache entry was dropped, not served stale
+feed still listed: False; cache entries left: 0
+left the context manager: opened 5, closed 5, still open 0
+```
+What is and is not shown: change events are tested in-process (in-memory transport) and with an injected fake client for
+dropped streams; over a real stdio subprocess only discovery, tool calls and resource reads are tested (the stdio servers
+do not host the live source). The agent loop does not use the hub yet (see `docs/RESULTS.md`).
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

@@ -3,6 +3,17 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 14 — MCP Discovery & Resource Lifecycle] — 2026-10
+### Added
+- Every agent-facing server now also exposes read-only resources (`incident://<id>/meta`, `logs/overview`, `metrics/summary`, `deploys/recent`, `diagnostics`) whose text is the same as the matching tool output (tested for all 28 incidents). Tools are unchanged.
+- `discovery.py`: `take_snapshot` (server name, instructions, negotiated protocol version, tools with schemas, resources) and the pure function `negotiate(snapshots, Needs)`: required tools first, optional tools in order, a tool budget for the agent's context, reports missing and dropped tools, name conflicts (first server wins) and servers that cannot push changes.
+- `hub.py` (`McpHub`): several connections, each in its own task; idempotent `close`, `reconnect`, failed-connect state, everything closed when the `async with` ends (also on errors); tool calls routed by the discovered catalog; cached resource reads; live updates through `subscriptions/listen` (resource updated -> cache entry dropped, tools changed -> catalog refreshed, resources changed -> catalog refreshed and stale cache entries deleted); dropped streams are re-opened a limited number of times, then TTL-only.
+- `resources.py` (`ResourceCache`): TTL + LRU, `invalidate`, `drop_server`, `keep_only`, `sweep`, injectable clock.
+- `live.py` + `demo.py`: a simulated live source (feed update, tool appears, source decommissioned) and `python -m incident_agent.mcp_servers.demo`.
+- Tests: `test_mcp_discovery.py` (63 tests, mutation-checked, includes failure injection with a fake client and a real stdio round trip).
+### Notes
+`resources/subscribe` no longer exists in MCP 2026-07-28 (the SDK answers "Method not found" although the capabilities still say `subscribe=True`); `Client.listen()` is used instead. There is no replay on that stream, so `open()` waits for the stream to be acknowledged and a lost stream drops the server's cache entries. The SDK has no public way to remove a resource at runtime; `live.py` uses one private attribute for that (pinned `mcp<3`, covered by a test).
+
 ## [Stage 13 — MCP Servers] — 2026-10
 ### Added
 - `mcp_servers/`: four MCP servers, one per data source, each bound to one incident (the id is not a tool argument): `logs` (get_incident_meta, log_overview, search_logs, log_window), `metrics` (get_metric_summary, list_metrics, query_metric), `deploys` (get_recent_deploys), `sandbox` (list_diagnostics, run_diagnostic). Failures are MCP tool errors tagged `[bad_args]` or `[unavailable]`.

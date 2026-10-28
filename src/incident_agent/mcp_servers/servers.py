@@ -27,6 +27,19 @@ BAD_ARGS = "[bad_args] "
 UNAVAILABLE = "[unavailable] "
 _DESCRIPTIONS = {t["function"]["name"]: t["function"]["description"] for t in TOOL_SPECS}
 
+
+def resource_uri(incident_id: str, path: str) -> str:
+    return f"incident://{incident_id}/{path}"
+
+
+# Read-only resources per server: (path under incident://<id>/, backend tool whose output the resource mirrors).
+SERVER_RESOURCES: dict[str, tuple[tuple[str, str], ...]] = {
+    "logs": (("meta", "get_incident_meta"), ("logs/overview", "log_overview")),
+    "metrics": (("metrics/summary", "get_metric_summary"),),
+    "deploys": (("deploys/recent", "get_recent_deploys"),),
+    "sandbox": (("diagnostics", "list_diagnostics"),),
+}
+
 SERVER_TOOLS: dict[str, tuple[str, ...]] = {
     "logs": ("get_incident_meta", "log_overview", "search_logs", "log_window"),
     "metrics": ("get_metric_summary", "list_metrics", "query_metric"),
@@ -53,6 +66,22 @@ def build_server(kind: str, incident_id: str, *, diagnostic_timeout: float = DEF
 
     def call(name: str, **args: Any) -> str:
         return _guard(lambda: backend.call(name, args))
+
+    def mirror(path: str, tool: str) -> None:
+        """Expose a tool's no-argument output as a read-only resource (same text, so tool and resource cannot drift)."""
+
+        def read() -> str:
+            return describe_scripts() if tool == "list_diagnostics" else call(tool)
+
+        server.resource(
+            resource_uri(incident_id, path),
+            name=path,
+            description=f"Same text as the {tool} tool.",
+            mime_type="text/plain",
+        )(read)
+
+    for path, tool in SERVER_RESOURCES[kind]:
+        mirror(path, tool)
 
     if kind == "logs":
 

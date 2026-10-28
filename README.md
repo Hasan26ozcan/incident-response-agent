@@ -26,7 +26,8 @@ gold set. Where a stage has not been measured yet, the table below says so.
 | 11 | Reranking (overlap baseline, optional real cross-encoder, cache, blend with fused score; before/after eval) | implemented (rewritten; legacy reranker superseded) | dev baseline in `docs/RESULTS.md`; real cross-encoder pending |
 | 12 | Episodic memory: post-mortem episodes, deterministic reflection, hybrid recall, recurrence evaluation (legacy memory/store superseded) | implemented (rewritten) | dev recurrence result in `docs/RESULTS.md`; n=14 |
 | 13 | MCP servers: logs, metrics, deploys and sandbox diagnostics as four MCP servers, `McpToolbox` drop-in, optional `--toolbox mcp` for `llm_react` | implemented | parity tests on all 28 incidents; no agent score yet |
-| 14-22 | MCP discovery, Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
+| 14 | MCP discovery and resource lifecycle: server catalog, tool negotiation under a context budget, live change events, TTL cache with stale cleanup, explicit open/close | implemented | demo + tests; not yet used by an agent |
+| 15-22 | Slack/wiki, sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
 
 "Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).
 It does **not** mean "proven better". The measured column is filled from real runs only
@@ -67,7 +68,8 @@ Short version (full runbook: [`docs/EVAL.md`](./docs/EVAL.md)):
 5. Retrieval (Stage 10): `python -m incident_agent.eval.validate_kb`, then `python -m incident_agent.eval.retrieval_eval --split dev --tag s10_hash`.
 6. Memory (Stage 12): `python -m incident_agent.eval.memory_eval --tag s12_hash` (recurrence set, no API cost).
 7. MCP (Stage 13): `python -m incident_agent.eval.harness --agent llm_react --toolbox mcp --split dev --tag s13_mcp` (reuses the cached LLM answers of the direct run).
-8. The **test** split is opened only at milestones (each opening is logged in `eval/test_openings.log`).
+8. MCP discovery (Stage 14): `python -m incident_agent.mcp_servers.demo` (no API key, no network).
+9. The **test** split is opened only at milestones (each opening is logged in `eval/test_openings.log`).
 
 ## Layout
 
@@ -83,6 +85,7 @@ src/incident_agent/
   agents/        LLM line + legacy line (see above)
   eval/          harness, compare, judge, preflight, retrieval_eval, validate_kb
   mcp_servers/   Stage 13: backend (tool logic), diagnostics (isolated scripts), servers (4 MCP servers), client (McpToolbox)
+                 Stage 14: discovery (snapshots, negotiation), hub (lifecycle, live updates), resources (cache), live (demo source), demo
   memory/        Stage 12: episodic memory (`episodic.py`; `store.py` is legacy, unaudited)
   knowledge/     Stage 10: tokenizer, BM25, embedders, vector stores (numpy/Qdrant), RRF hybrid search, KB loader, log-query builder
   schemas/ prompts/ retrieval/ workflows/ memory/   (retrieval/ and memory/ are legacy, unaudited)

@@ -108,6 +108,15 @@ byte-identical text and identical error semantics through MCP; a scripted `llm_r
 exactly the same LLM requests (same cache keys) and gives the same diagnosis as the direct toolbox. The real-model
 check (`--toolbox mcp` reproducing a cached dev run with zero API calls) is pending on the maintainers' side.
 
+## Stage 14: MCP discovery and resource lifecycle
+
+No diagnosis score is claimed; this stage adds infrastructure and a demo. Verified in the sandbox: discovery on the four
+servers returns exactly the Stage 13 tool map; every resource equals its tool output for all 28 incidents; a server-pushed
+update removes exactly the affected cache entry (and with watching off the same read is served stale until the TTL,
+which is what the live events are for); a lost stream is retried a bounded number of times and then falls back to
+TTL-only caching; after exit `opened == closed` and no connection is left open, also when the body raises or a connect fails.
+Not measured: behaviour over HTTP transports or real remote servers, and any effect on agent accuracy (agents do not use the hub).
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).
