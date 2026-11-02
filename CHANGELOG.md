@@ -3,6 +3,22 @@
 All notable changes to the Incident Response Agent project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Stage 15 — Notification & Reporting] — 2026-11
+### Added
+- `reporting/postmortem.py`: deterministic post-mortem page from a validated `Diagnosis` (no LLM writes it; no invented timeline, impact or lessons; states it is an unreviewed draft; low-confidence banner below 50 %; evidence capped at 10, steps at 10). The tier shown is the diagnosis tier raised, never lowered, to the floor `risk_guard.risk_floor` derives from the recommendation text, so a page cannot understate "restart the pods".
+- `reporting/sanitize.py`: secret redaction (API keys, tokens, JWTs, Slack webhooks, `password=`-style pairs), control-character removal, Markdown and Slack escaping for all untrusted text.
+- `reporting/slack.py`: Block Kit message (escaped, bounded), strict mention whitelist, link only for safe URLs; `WebhookSender` (host must be hooks.slack.com, https only) and `OutboxSender` (JSONL, offline).
+- `reporting/wiki.py`: `FileWiki` (versioned pages, history, index, atomic writes, validated slugs) and `ConfluenceWiki` (REST `/rest/api/content`: find by title, create, update with version+1, unchanged when the content hash marker matches), plus a Markdown-to-storage converter that HTML-escapes everything.
+- `reporting/http.py`: HTTP client without redirects, https only (http for loopback), retry on 429/5xx/network errors with `Retry-After` and back-off, errors never contain the URL or headers.
+- `reporting/notify.py`: `Reporter` (wiki first, then Slack; each failure isolated and returned, never raised), `Ledger` (a content is announced once; changed content or a later link is announced again), `build_reporter(live=...)`.
+- CLI: `python -m incident_agent.reporting INC-005 [--diagnosis-json F] [--live] [--dir D]`, and `incident-agent diagnose ... --report | --report-live`.
+- `.gitignore`: `.cache/` (it was not ignored; report output and caches live there).
+- Tests: `test_reporting.py` (207 tests, 100 % line coverage of the package except one `__main__` guard, mutation-checked: 76 mutants, 0 survivors after 7 fixes).
+### Fixed during development
+- Page titles put untrusted text into the Markdown heading unescaped (link injection); the Confluence converter mis-parsed table separator rows; the risk tier on the page could say `low` for a "restart" recommendation.
+### Notes
+Live delivery is opt-in until the Stage 18 human approval gate exists (`openspec/risk-classification.md` rates Slack and wiki writes as medium risk). Confluence behaviour is verified against a local fake that implements the same endpoints, not against a Confluence site.
+
 ## [Stage 14 — MCP Discovery & Resource Lifecycle] — 2026-10
 ### Added
 - Every agent-facing server now also exposes read-only resources (`incident://<id>/meta`, `logs/overview`, `metrics/summary`, `deploys/recent`, `diagnostics`) whose text is the same as the matching tool output (tested for all 28 incidents). Tools are unchanged.

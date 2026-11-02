@@ -29,3 +29,6 @@ eval/traces/
 .coverage
 htmlcov/
 .llm_cache/
+
+# local caches and Stage 15 report output (pages, outbox, ledger)
+.cache/

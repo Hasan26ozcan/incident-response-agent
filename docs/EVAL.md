@@ -156,6 +156,22 @@ What is and is not shown: change events are tested in-process (in-memory transpo
 dropped streams; over a real stdio subprocess only discovery, tool calls and resource reads are tested (the stdio servers
 do not host the live source). The agent loop does not use the hub yet (see `docs/RESULTS.md`).
 
+## 4i. Stage 15 post-mortem and Slack (no API key, no network)
+
+```powershell
+python -m pytest -q tests/test_reporting.py
+python -m incident_agent.reporting INC-005              # offline agent -> page + Slack message in .cache/reports
+python -m incident_agent.reporting INC-005              # again: "wiki: unchanged", "slack: skipped (already announced)"
+incident-agent diagnose INC-005 --agent legacy --report # same, through the normal CLI
+```
+Look at `.cache/reports/wiki/postmortem-inc-005.md` and `.cache/reports/slack-outbox.jsonl`. Check: the page says it is an
+unreviewed draft, the evidence is inside code spans, and the risk tier reads `high` with "raised to high because the
+recommendation mentions `restart`" (the offline agent rates it `low`).
+
+Going live (optional, only with your own free accounts): put `SLACK_WEBHOOK_URL` (a Slack incoming webhook) and/or the
+`CONFLUENCE_*` variables in `.env` (see `.env.example`), then add `--live`. A webhook URL or API token pasted into chat is
+compromised: revoke it. Without `--live` the environment is ignored and everything stays in local files.
+
 ## 5. Risk guard (zero API cost)
 
 Same command plus `--risk-guard` and a new tag. LLM responses come from the cache, so this only

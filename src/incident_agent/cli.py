@@ -13,7 +13,8 @@ import sys
 from incident_agent import __version__
 from incident_agent.agents.react_agent import ReActAgent
 from incident_agent.llm.client import LLMUnavailable, _load_dotenv
-from incident_agent.schemas import CommanderDiagnosis, Diagnosis
+from incident_agent.schemas.command_diagnosis import CommanderDiagnosis
+from incident_agent.schemas.diagnosis import Diagnosis
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,7 +39,8 @@ def _cmd_diagnose(args: list[str]) -> int:
     if not args:
         print(
             "Usage: incident-agent diagnose <INC-ID> "
-            "[--agent llm|orchestrator|debate|tot|swarm|swarm-debate|swarm-full|legacy] [--risk-guard]"
+            "[--agent llm|orchestrator|debate|tot|swarm|swarm-debate|swarm-full|legacy] [--risk-guard] "
+            "[--report | --report-live]"
         )
         print("Example: incident-agent diagnose INC-001")
         return 1
@@ -83,7 +85,34 @@ def _cmd_diagnose(args: list[str]) -> int:
     else:
         diagnosis = ReActAgent(confidence_threshold=0.7).run(incident_id)
     print(diagnosis.format_report())
+    if "--report" in args or "--report-live" in args:
+        return _report(diagnosis, live="--report-live" in args)
     return 0
+
+
+def _report(diagnosis: Diagnosis | CommanderDiagnosis, *, live: bool) -> int:
+    """Stage 15: publish the post-mortem and notify Slack (local files unless ``--report-live``)."""
+    from incident_agent.reporting import ConfigError, build_reporter
+
+    try:
+        reporter = build_reporter(live=live)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    report_diagnosis = diagnosis.diagnosis if isinstance(diagnosis, CommanderDiagnosis) else diagnosis
+    result = reporter.report(report_diagnosis)
+    print(f"\nreport ({'LIVE' if live else 'local files'}: {reporter.describe()})")
+    if result.wiki:
+        print(f"  wiki:  {result.wiki.action} {result.wiki.url}")
+    if result.wiki_error:
+        print(f"  wiki:  FAILED {result.wiki_error}")
+    if result.slack_sent:
+        print("  slack: sent")
+    elif result.slack_skipped:
+        print(f"  slack: skipped ({result.slack_skipped})")
+    if result.slack_error:
+        print(f"  slack: FAILED {result.slack_error}")
+    return 0 if result.ok else 1
 
 
 if __name__ == "__main__":

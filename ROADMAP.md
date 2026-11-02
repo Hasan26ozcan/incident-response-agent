@@ -104,6 +104,7 @@ resource cleanup.
 *Output:* demo of the discovery mechanism.
 
 **Stage 15 — Notification & Reporting Integration**
+*Status: implemented (`reporting/`); real Slack/Confluence only with `--live`, tested against local fake servers, not against the real services.*
 Slack notification (mock/real webhook). Post-mortem report auto-published
 to a wiki/Confluence page — the realistic, scenario-appropriate stand-in
 for the "UI automation" / "CRM-DB integration" spirit of the job posting.

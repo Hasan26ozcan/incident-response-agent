@@ -117,6 +117,14 @@ which is what the live events are for); a lost stream is retried a bounded numbe
 TTL-only caching; after exit `opened == closed` and no connection is left open, also when the body raises or a connect fails.
 Not measured: behaviour over HTTP transports or real remote servers, and any effect on agent accuracy (agents do not use the hub).
 
+## Stage 15: notification and reporting
+
+No diagnosis score is claimed. Verified in the sandbox: for all 28 incidents the offline agent's diagnosis becomes a page
+and a Slack message with no raw `<!channel>`, no live Markdown link and no secret; real HTTP paths (retry on 429/503 with
+`Retry-After`, no redirect following, no URL in errors, create/update/unchanged against a Confluence-shaped fake server)
+are exercised against local servers. Not verified: delivery to real Slack and Confluence, Slack rate limits beyond the
+documented `Retry-After` behaviour, and how Confluence renders the converted page.
+
 ## Known measured facts (pre-existing)
 
 * Legacy rule-based orchestrator: F1 0.068, answered 0.15, risk accuracy 0.0, 1 crash (legacy audit).
