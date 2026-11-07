@@ -111,6 +111,9 @@ for the "UI automation" / "CRM-DB integration" spirit of the job posting.
 *Output:* an automatically generated, published post-mortem page.
 
 **Stage 16 — Sandbox Code/Shell Execution Safety**
+*Status: implemented (`incident_agent.sandbox/`; details in [Stage 16 docs](./docs/STAGE16_SANDBOX.md)); read-only
+commands work on the process backend, while mutating commands require Docker or the Linux namespace backend. The
+process backend does not claim memory isolation on Windows.*
 Risky commands run in an isolated environment with an allow-list.
 *Output:* isolation verified via sandbox-escape attempt tests.
 

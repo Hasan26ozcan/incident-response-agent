@@ -478,3 +478,14 @@ Each stage adds its own section here following this pattern:
 ### Verified
 - Acceptance criteria met
 ```
+
+## [Stage 16] — Sandbox Code/Shell Execution Safety — 2026-11-07
+### Added
+- `src/incident_agent/sandbox/`: typed command allow-list (no shell), policy + fingerprint, single-use bound
+  approvals (interface for Stage 18), fsynced audit log, `process` / `namespace` / `docker` backends with declared
+  guarantees, runner that fails closed, sandbox-escape self-test, CLI `python -m incident_agent.sandbox`.
+- `tests/test_sandbox.py`: 124 tests, 99 % line coverage of the package.
+- `openspec/changes/023-sandbox-execution/proposal.md`, `docs/STAGE16_SANDBOX.md`.
+### Verified
+- Namespace backend: 16/16 escape checks pass in the build sandbox; process backend shows the same attacks escaping
+  (positive control). Docker backend verified through its command line and a fake CLI only.

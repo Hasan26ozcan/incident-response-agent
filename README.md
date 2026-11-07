@@ -28,7 +28,8 @@ gold set. Where a stage has not been measured yet, the table below says so.
 | 13 | MCP servers: logs, metrics, deploys and sandbox diagnostics as four MCP servers, `McpToolbox` drop-in, optional `--toolbox mcp` for `llm_react` | implemented | parity tests on all 28 incidents; no agent score yet |
 | 14 | MCP discovery and resource lifecycle: server catalog, tool negotiation under a context budget, live change events, TTL cache with stale cleanup, explicit open/close | implemented | demo + tests; not yet used by an agent |
 | 15 | Notification and reporting: deterministic post-mortem page, Slack message, file wiki and Confluence client, sent-once ledger | implemented | tests incl. real HTTP against local fakes; never run against live Slack/Confluence |
-| 16-22 | Sandbox safety, Temporal, HITL, eval CI, security, observability, release | not started | no |
+| 16 | Sandbox execution safety (allow-list, approvals, audit, isolated backends, escape tests) | implemented | sandbox tests and escape self-test; Windows process backend only |
+| 17-22 | Temporal, HITL, eval CI, security, observability, release | not started | no |
 
 "Implemented" means: code + tests (roadmap-conformance, failure modes, mutation-checked).
 It does **not** mean "proven better". The measured column is filled from real runs only
