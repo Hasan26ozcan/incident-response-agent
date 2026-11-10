@@ -126,6 +126,7 @@ Long-running incident workflow that resumes from interruption.
 **Stage 18 — Human-in-the-Loop & Escalation**
 Approval gate for risky actions; escalation on timeout.
 *Output:* test scenario covering pending approval and timeout escalation.
+*Status:* implemented (see `docs/STAGE18_HITL.md`).
 
 ## Phase G — Evaluation, Safety, Observability (Stage 19–21)
 

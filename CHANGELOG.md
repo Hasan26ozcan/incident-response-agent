@@ -489,3 +489,15 @@ Each stage adds its own section here following this pattern:
 ### Verified
 - Namespace backend: 16/16 escape checks pass in the build sandbox; process backend shows the same attacks escaping
   (positive control). Docker backend verified through its command line and a fake CLI only.
+
+## [Stage 18] — Human-in-the-Loop & Escalation — 2026-11-09
+### Added
+- `src/incident_agent/hitl/`: event-sourced approval requests, escalation policy (levels, timeouts, quorum per tier),
+  token-authenticated approver roster, notifications (outbox, Slack through the Stage 15 sender), a controller that
+  connects the gate to Stage 17 durable runs, CLI and demo (`python -m incident_agent.hitl demo`).
+- `tests/test_hitl.py`; `openspec/changes/025-human-in-the-loop/proposal.md`; `docs/STAGE18_HITL.md`.
+### Rules
+- Timeout escalates and finally expires; an expired request is a refusal, never an approval.
+### Verified
+- Pending-approval and timeout-escalation scenario, spec conformance test, randomised history test, mutation check.
+  Live Slack delivery is only tested against fakes; authentication is a local token, not SSO.
