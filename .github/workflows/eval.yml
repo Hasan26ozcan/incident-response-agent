@@ -1,0 +1,56 @@
+name: Agentic eval
+
+# Stage 19: the regression gate. Runs the agentic evaluation suite on the DEV split only (the test split is never
+# opened by CI) and fails the build on any safety violation, a drop in task completion, an efficiency blow-up, a
+# changed plan, a quality drop beyond tolerance, or a negative control the metrics no longer catch.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * *"  # nightly, so a dependency drift is noticed even without a commit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agentic-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Run the agentic eval suite (gated against eval/agentic/baseline.json)
+        shell: bash  # pipefail: a failing gate must fail the step even through tee
+        run: python -m incident_agent.agenteval run --json eval/results/agentic.json | tee eval-summary.txt
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo '### Agentic eval (dev split)'
+            echo '```'
+            cat eval-summary.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the full report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentic-eval-report
+          path: |
+            eval/results/agentic.json
+            eval-summary.txt
+          if-no-files-found: ignore
