@@ -261,7 +261,7 @@ class RunLock:
             if self._win_error:
                 import ctypes
 
-                raise ctypes.WinError(self._win_error[0])
+                raise ctypes.WinError(self._win_error[0])  # type: ignore[attr-defined,unused-ignore]
             return
         fd, self._fd = self._fd, None
         if fd is None:
@@ -269,6 +269,6 @@ class RunLock:
         try:
             import fcntl
 
-            fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[attr-defined]
+            fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[attr-defined,unused-ignore]
         finally:
             os.close(fd)

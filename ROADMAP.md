@@ -122,6 +122,8 @@ Risky commands run in an isolated environment with an allow-list.
 **Stage 17 — Temporal Workflow**
 Long-running incident workflow that resumes from interruption.
 *Output:* post-interruption resume demo.
+*Status:* implemented (see `docs/STAGE17_DURABLE.md`).
+
 
 **Stage 18 — Human-in-the-Loop & Escalation**
 Approval gate for risky actions; escalation on timeout.

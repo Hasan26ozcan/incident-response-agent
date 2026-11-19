@@ -501,3 +501,13 @@ Each stage adds its own section here following this pattern:
 ### Verified
 - Pending-approval and timeout-escalation scenario, spec conformance test, randomised history test, mutation check.
   Live Slack delivery is only tested against fakes; authentication is a local token, not SSO.
+
+## [Stage 17] — Durable Workflow — 2026-11-08
+### Added
+- `src/incident_agent/durable/`: event-sourced journal, resumable engine (at-least-once steps, at-most-once `execute`),
+  durable waits/signals/cancel, OS file lock, incident workflow on the Stage 16 sandbox, CLI with a SIGKILL resume demo,
+  optional Temporal adapter (`pip install "temporalio>=1.7"`).
+- `tests/test_durable.py`, `tests/test_temporal_adapter.py`; `openspec/changes/024-durable-workflow/proposal.md`,
+  `docs/STAGE17_DURABLE.md`.
+### Verified
+- Real SIGKILL then resume; mutation check on the durable package. Temporal server tests need a local server.
