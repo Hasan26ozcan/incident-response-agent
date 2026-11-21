@@ -46,6 +46,11 @@ class WorkflowMismatch(RuntimeError):
     """The journal was written by a different workflow definition than the one asked to resume it."""
 
 
+_WINDOWS_RESERVED = frozenset(
+    {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+)
+
+
 class StepTimeout(Exception):
     pass
 
@@ -135,10 +140,10 @@ class Clock:
 
 
 def kill_self(event: dict[str, Any]) -> None:  # pragma: no cover - the process dies here, by design
-    """Crash hook for demos and tests: terminate abruptly without cleanup or atexit handlers."""
+    """Crash hook for demos and tests: die like a power cut (SIGKILL, no cleanup, no atexit)."""
     if os.name == "nt":
         os._exit(137)
-    os.kill(os.getpid(), _signal.SIGKILL)  # type: ignore[attr-defined]
+    os.kill(os.getpid(), _signal.SIGKILL)
 
 
 def crash_after(spec: str) -> Callable[[dict[str, Any]], None]:
@@ -171,7 +176,10 @@ class Engine:
     # -- paths ----------------------------------------------------------------------------------------------------
 
     def run_dir(self, run_id: str) -> Path:
-        return self.root / check_run_id(run_id)
+        stem = check_run_id(run_id).split(".")[0].upper()
+        if stem in _WINDOWS_RESERVED:  # 'con', 'nul', 'com1' ... cannot be directories on Windows
+            raise ValueError(f"run id {run_id!r} is a reserved device name on Windows")
+        return self.root / run_id
 
     def _journal(self, run_id: str) -> Journal:
         return Journal(self.run_dir(run_id), self.clock.now)

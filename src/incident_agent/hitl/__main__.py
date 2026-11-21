@@ -35,6 +35,7 @@ from incident_agent.hitl.store import RequestState, RequestStore
 from incident_agent.reporting.sanitize import one_line
 from incident_agent.reporting.slack import ConfigError, WebhookSender
 from incident_agent.sandbox import select_backend
+from incident_agent.security.signing import ApprovalSigner
 
 APPROVER_ENV = "INCIDENT_APPROVER_TOKEN"
 
@@ -78,9 +79,9 @@ def _gate(args: argparse.Namespace, clock: Any = time.time) -> tuple[ApprovalGat
     return gate, root, runs
 
 
-def _engine(args: argparse.Namespace, policy: EscalationPolicy, runs: Path) -> Engine:
+def _engine(args: argparse.Namespace, policy: EscalationPolicy, runs: Path, signer: ApprovalSigner) -> Engine:
     backend = getattr(args, "backend", None)
-    deps = Deps(backend_factory=lambda: select_backend(backend), approval_timeout=policy.total_timeout)
+    deps = Deps(backend_factory=lambda: select_backend(backend), approval_timeout=policy.total_timeout, signer=signer)
     return Engine(incident_workflow(deps), runs, poll_interval=0.2)
 
 
@@ -127,8 +128,9 @@ def cmd_roster(args: argparse.Namespace) -> int:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
-    gate, _root, runs = _gate(args)
-    engine = _engine(args, gate.policy, runs)
+    gate, root, runs = _gate(args)
+    signer = ApprovalSigner.from_file(root / "signing.key")
+    engine = _engine(args, gate.policy, runs, signer)
     run_id = args.run_id or f"{args.incident.lower()}-{int(time.time())}"
     payload: dict[str, Any] = {"incident_id": args.incident}
     if args.requested_by:
@@ -141,8 +143,9 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
-    gate, _root, runs = _gate(args)
-    ctl = Controller(gate, _engine(args, gate.policy, runs))
+    gate, root, runs = _gate(args)
+    signer = ApprovalSigner.from_file(root / "signing.key")
+    ctl = Controller(gate, _engine(args, gate.policy, runs, signer), signer=signer)
     try:
         while True:
             report = ctl.step()
@@ -212,11 +215,14 @@ def cmd_demo(args: argparse.Namespace) -> int:
     roster = Roster(root / "roster.json")
     tokens = {n: roster.add(n, [r]) for n, r in (("alice", "oncall"), ("bob", "lead"), ("carol", "manager"))}
     gate = ApprovalGate(RequestStore(root / "requests"), roster, policy, OutboxNotifier(root / "outbox.jsonl"))
+    signer = ApprovalSigner.from_file(root / "signing.key")
     deps = Deps(
-        backend_factory=lambda: select_backend(getattr(args, "backend", None)), approval_timeout=policy.total_timeout
+        backend_factory=lambda: select_backend(getattr(args, "backend", None)),
+        approval_timeout=policy.total_timeout,
+        signer=signer,
     )
     engine = Engine(incident_workflow(deps), root / "runs", poll_interval=0.1)
-    ctl = Controller(gate, engine)
+    ctl = Controller(gate, engine, signer=signer)
     print(
         f"state directory: {root}\npolicy: 3 levels of 1.2 s (primary -> secondary -> management), 2 approvals needed"
     )

@@ -13,6 +13,14 @@ from pathlib import Path
 from typing import NamedTuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_INCIDENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+
+
+def _incident_dir(incident_id: str) -> Path:
+    """The data directory of one incident. The id is untrusted (a run input, a CLI argument): no path syntax."""
+    if not isinstance(incident_id, str) or not _INCIDENT_ID.fullmatch(incident_id) or ".." in incident_id:
+        raise ValueError("incident id must be 1-64 characters of letters, digits, '.', '_' or '-' (no path syntax)")
+    return PROJECT_ROOT / "data" / "incidents" / incident_id
 
 
 class LogEntry(NamedTuple):
@@ -24,13 +32,13 @@ class LogEntry(NamedTuple):
 
 def read_meta(incident_id: str) -> dict:
     """Read and return the meta.json for a given incident."""
-    path = PROJECT_ROOT / "data" / "incidents" / incident_id / "meta.json"
+    path = _incident_dir(incident_id) / "meta.json"
     return json.loads(path.read_text())
 
 
 def read_logs(incident_id: str) -> list[LogEntry]:
     """Parse logs.log into structured LogEntry objects."""
-    path = PROJECT_ROOT / "data" / "incidents" / incident_id / "logs.log"
+    path = _incident_dir(incident_id) / "logs.log"
     entries: list[LogEntry] = []
     pattern = re.compile(
         r"(?P<ts>\S+)\s+service=(?P<service>\S+)\s+"
@@ -52,13 +60,13 @@ def read_logs(incident_id: str) -> list[LogEntry]:
 
 def read_metrics(incident_id: str) -> dict:
     """Read and return metrics.json for a given incident."""
-    path = PROJECT_ROOT / "data" / "incidents" / incident_id / "metrics.json"
+    path = _incident_dir(incident_id) / "metrics.json"
     return json.loads(path.read_text())
 
 
 def read_deploys(incident_id: str) -> list[dict]:
     """Read and return deploys.json for a given incident."""
-    path = PROJECT_ROOT / "data" / "incidents" / incident_id / "deploys.json"
+    path = _incident_dir(incident_id) / "deploys.json"
     return json.loads(path.read_text())
 
 

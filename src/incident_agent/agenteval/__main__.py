@@ -35,6 +35,9 @@ def render(report: dict, fail: list[str], notes: list[str]) -> str:
                 f"{c['control']}={'caught' if c['flagged'] else 'MISSED'}" for c in report["controls"]["controls"]
             )
         )
+    if "security" in report:
+        sec = report["security"]
+        lines.append(f"security   {sec['attacks']} attacks  " + json.dumps(sec["verdicts"], sort_keys=True))
     for k in ("diagnosis", "retrieval", "memory"):
         if k in report:
             lines.append(
@@ -79,7 +82,11 @@ def main(argv: list[str] | None = None) -> int:
             if set(sections) != set(suite.SECTIONS) or ids is not None:
                 raise suite.SuiteError("--update-baseline needs the full suite on the full dev split")
             fail, _ = suite.gate(report, {**suite.baseline_from(report), "schema": suite.SCHEMA})
-            hard = [f for f in fail if f.startswith(("SAFETY", "negative control", "planner proposes", "scenario "))]
+            hard = [
+                f
+                for f in fail
+                if f.startswith(("SAFETY", "SECURITY", "negative control", "planner proposes", "scenario "))
+            ]
             if hard:
                 raise suite.SuiteError("refusing to baseline a failing system: " + "; ".join(hard))
             Path(args.baseline).parent.mkdir(parents=True, exist_ok=True)

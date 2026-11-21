@@ -210,7 +210,7 @@ def test_lock_is_released_when_the_owner_dies(tmp_path: Path) -> None:
         assert proc.stdout is not None and proc.stdout.readline().strip() == "held"
         with pytest.raises(LockError):
             RunLock(tmp_path / "r").acquire()
-        proc.kill()  # terminate the process without running cleanup code
+        proc.kill()  # SIGKILL: no cleanup code runs
         proc.wait()
         mine = RunLock(tmp_path / "r")
         mine.acquire()
@@ -670,7 +670,9 @@ DATA = {
 
 def flow_with(backend: FakeBackend, data: dict[str, Any] | None = None) -> Workflow:
     payload = data if data is not None else DATA
-    deps = wf.Deps(backend_factory=lambda: backend, data_loader=lambda _i: payload, approval_timeout=30.0)
+    deps = wf.Deps(
+        backend_factory=lambda: backend, data_loader=lambda _i: payload, approval_timeout=30.0, allow_unsigned=True
+    )
     return wf.incident_workflow(deps)
 
 
@@ -754,7 +756,8 @@ def test_the_approval_nonce_cannot_be_spent_twice(tmp_path: Path) -> None:
     assert e.run("r", block=False).results["execute"]["status"] == "ok"
     # replay the execute step by hand with the same run: the deterministic nonce is already consumed in the audit log
     ctx = StepContext("r", "execute", 1, {"incident_id": "INC-777"}, dict(e.state("r").results), e.run_dir("r"))
-    again = wf.make_execute(wf.Deps(backend_factory=lambda: backend, data_loader=lambda _i: DATA))(ctx)
+    deps = wf.Deps(backend_factory=lambda: backend, data_loader=lambda _i: DATA, allow_unsigned=True)
+    again = wf.make_execute(deps)(ctx)
     assert again["status"] == "refused" and "already used" in again["message"] and backend.calls == 1
 
 
@@ -871,7 +874,19 @@ def test_workflow_shape_and_helpers(tmp_path: Path) -> None:
 def cli_backend(monkeypatch: pytest.MonkeyPatch) -> FakeBackend:
     backend = FakeBackend()
     monkeypatch.setattr("incident_agent.durable.__main__.select_backend", lambda _name=None: backend)
+    monkeypatch.setenv("INCIDENT_ALLOW_UNSIGNED_APPROVALS", "1")  # the standalone CLI has no gate to seal approvals
     return backend
+
+
+def test_cli_refuses_an_unsealed_approval_by_default(
+    tmp_path: Path, cli_backend: FakeBackend, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("INCIDENT_ALLOW_UNSIGNED_APPROVALS")
+    root = ["--root", str(tmp_path)]
+    main([*root, "start", "INC-002", "--run-id", "r1", "--no-wait"])
+    main([*root, "signal", "r1", "approval", "--by", "alice"])
+    main([*root, "resume", "r1", "--no-wait"])
+    assert "dry_run" in capsys.readouterr().out and cli_backend.calls == 1  # only the dry run reached the backend
 
 
 def test_cli_full_flow(tmp_path: Path, cli_backend: FakeBackend, capsys: pytest.CaptureFixture[str]) -> None:
@@ -912,7 +927,7 @@ def test_cli_reject_cancel_and_failures(
 def test_cli_demo_kills_a_real_process_and_resumes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--root", str(tmp_path), "demo"]) == 0
     out = capsys.readouterr().out
-    assert "worker exit code: " in out and "resumed without repeating any finished step" in out
+    assert "worker exit code: -9" in out and "resumed without repeating any finished step" in out
     assert "'triage': 1, 'diagnose': 1, 'plan_action': 1" in out
 
 

@@ -14,6 +14,7 @@ The backend declares full isolation but provides none; real isolation is Stage 1
 from __future__ import annotations
 
 import json
+import secrets
 import subprocess
 import sys
 from collections.abc import Callable
@@ -45,6 +46,8 @@ from incident_agent.sandbox.backends import (
     ExecResult,
     ExecSpec,
 )
+from incident_agent.security.killswitch import GuardedBackend, KillSwitch, guard_workflow
+from incident_agent.security.signing import ApprovalSigner
 
 START = 1_000_000.0
 TERMINAL = ("completed", "failed", "cancelled")
@@ -139,15 +142,19 @@ class Rig:
         data_loader: Callable[[str], dict[str, Any]] | None = None,
         retry: RetryPolicy | None = None,
         policy: Any = DEFAULT_POLICY,
+        killswitch: KillSwitch | None = None,
     ) -> None:
         self.root, self.clock = Path(root), SimClock()
+        self.signer = ApprovalSigner(secrets.token_bytes(32))  # the gate's key; the worker verifies with it (Stage 20)
         self.backend = backend or RecordingBackend()
         self.policy = policy
+        self.killswitch = killswitch
         self.deps = wf.Deps(
-            backend_factory=lambda: self.backend,
+            backend_factory=lambda: GuardedBackend(self.backend, killswitch) if killswitch else self.backend,
             data_loader=data_loader,
             retry=retry or RetryPolicy(max_attempts=3, initial_delay=0.2, max_delay=2.0),
             approval_timeout=policy.total_timeout,
+            signer=self.signer,
         )
         self.workflow_factory = workflow_factory
         self.roster = Roster(self.root / "roster.json")
@@ -161,11 +168,14 @@ class Rig:
             self.clock,
         )
         self.engine = self._engine()
-        self.ctl = Controller(self.gate, self.engine)
+        self.ctl = Controller(self.gate, self.engine, signer=self.signer)
 
     def _engine(self, crash_hook: Callable[[dict[str, Any]], None] | None = None) -> Engine:
+        flow = self.workflow_factory(self.deps)
+        if self.killswitch is not None:
+            flow = guard_workflow(flow, self.killswitch)
         return Engine(
-            self.workflow_factory(self.deps),
+            flow,
             self.root / "runs",
             clock=self.clock,
             crash_hook=crash_hook,
@@ -182,12 +192,12 @@ class Rig:
                 raise SimulatedCrash(spec)
 
         self.engine = self._engine(hook)
-        self.ctl = Controller(self.gate, self.engine)
+        self.ctl = Controller(self.gate, self.engine, signer=self.signer)
 
     def restart(self) -> None:
         """A fresh process: new engine and controller over the same journals, same stores."""
         self.engine = self._engine()
-        self.ctl = Controller(self.gate, self.engine)
+        self.ctl = Controller(self.gate, self.engine, signer=self.signer)
 
 
 def run_scenario(

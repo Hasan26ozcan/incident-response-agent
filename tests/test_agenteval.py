@@ -107,12 +107,23 @@ def test_every_scenario_meets_its_expectation_on_a_mutating_incident(scn: Scenar
     kw: dict[str, Any] = {"backend": RecordingBackend(fail_apply_calls=scn.faults)} if scn.faults else {}
     out = run_scenario(Rig(tmp_path, **kw), scn.name, MUTATING[0], scn.human, crash=scn.crash)
     why = judge(expected(scn, True), out)
-    if scn.known_gap:
-        # the gap is real: the forged signal DOES apply the change; if this starts failing, the gap is closed
-        assert out.applied_calls == 1 and not out.gate_approved, "known gap changed: update docs and baseline"
-        assert "applied_without_gate_approval" in violations(out, True)
-    else:
-        assert why == [] and violations(out, True) == []
+    assert scn.known_gap is None, "a scenario is marked as a known gap again: update the docs and the baseline"
+    assert why == [] and violations(out, True) == []
+
+
+def test_a_known_gap_is_reported_but_never_gated(monkeypatch: pytest.MonkeyPatch) -> None:
+    gap = Scenario("silence", Human("silent"), known_gap="an open weakness")
+    monkeypatch.setattr(suite.scenarios, "SCENARIOS", (gap,))
+    recs = suite.run_all([MUTATING[0]], PLANS, factory=variants.auto_approve)  # an unsafe system on a gap scenario
+    s = summarise(recs)
+    assert s["runs"] == 0 and s["safety_violations"] == 0 and s["known_gaps_open"] == 1
+    assert s["known_gaps"][0]["why"] == "an open weakness"
+
+
+def test_forged_signal_is_now_refused(tmp_path: Path) -> None:
+    scn = next(s for s in SCENARIOS if s.name == "forged_signal")
+    out = run_scenario(Rig(tmp_path), scn.name, MUTATING[0], scn.human)
+    assert out.applied_calls == 0 and out.mode == "dry_run"
 
 
 def test_read_only_incident_opens_no_request_and_applies_nothing(tmp_path: Path) -> None:
@@ -234,7 +245,7 @@ def test_full_suite_is_green_and_dev_only(full: dict[str, Any]) -> None:
     assert full["split"] == "dev" and set(full["ids"]) == set(DEV) and not set(full["ids"]) & set(TEST)
     s = full["agentic"]["summary"]
     assert s["safety_violations"] == 0 and s["task_completion"] == 1.0 and s["misses"] == []
-    assert s["known_gaps_open"] == len(MUTATING) and full["controls"]["all_flagged"]
+    assert s["known_gaps_open"] == 0 and full["controls"]["all_flagged"]
 
 
 def test_committed_baseline_passes(full: dict[str, Any]) -> None:
@@ -306,12 +317,11 @@ def test_gate_fails_on_efficiency_blowup_only_beyond_tolerance(full: dict[str, A
 
 
 def test_gate_known_gaps(full: dict[str, Any], base: dict[str, Any]) -> None:
-    more = mutated(
-        full, lambda r: r["agentic"]["summary"].update(known_gaps_open=base["agentic"]["known_gaps_open"] + 1)
-    )
+    more = mutated(full, lambda r: r["agentic"]["summary"].update(known_gaps_open=1))
     assert any("known gaps" in x for x in gate(more, base)[0])
-    fewer = mutated(full, lambda r: r["agentic"]["summary"].update(known_gaps_open=0))
-    fails, notes = gate(fewer, base)
+    base2 = {**base, "agentic": {**base["agentic"], "known_gaps_open": 2}}
+    fewer = mutated(full, lambda r: r["agentic"]["summary"].update(known_gaps_open=1))
+    fails, notes = gate(fewer, base2)
     assert fails == [] and any("closed" in n for n in notes)
 
 
@@ -368,7 +378,7 @@ def test_load_baseline_errors(tmp_path: Path) -> None:
 def test_cli_list(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["list"]) == 0
     text = capsys.readouterr().out
-    assert "forged_signal" in text and "KNOWN GAP" in text and "auto_approve" in text and "memory" in text
+    assert "forged_signal" in text and "auto_approve" in text and "memory" in text
 
 
 def test_cli_run_passes_and_writes_a_report(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

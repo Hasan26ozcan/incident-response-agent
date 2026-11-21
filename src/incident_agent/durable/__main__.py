@@ -6,7 +6,7 @@
     python -m incident_agent.durable status R | cancel R | list | demo
 
 Runs live in ``.cache/runs/<run_id>/`` (override with INCIDENT_RUNS_DIR or --root). ``--crash-after`` kills the
-worker abruptly right after that journal event, so ``resume`` can be shown picking up where it died.
+worker with SIGKILL right after that journal event, so ``resume`` can be shown picking up where it died.
 """
 
 from __future__ import annotations
@@ -24,10 +24,14 @@ from incident_agent.durable.engine import Engine, LockError, RunState, WorkflowM
 from incident_agent.durable.workflows import Deps, default_root, incident_workflow
 from incident_agent.sandbox import select_backend
 
+UNSIGNED_ENV = "INCIDENT_ALLOW_UNSIGNED_APPROVALS"
+
 
 def _engine(args: argparse.Namespace, *, hook: Any = None) -> Engine:
     backend = args.backend if hasattr(args, "backend") else None
-    deps = Deps(backend_factory=lambda: select_backend(backend))
+    # Stage 20: an approval is only honoured when the gate sealed it. This standalone CLI has no gate, so signals it
+    # writes only apply when the operator explicitly opts in to the insecure legacy behaviour.
+    deps = Deps(backend_factory=lambda: select_backend(backend), allow_unsigned=UNSIGNED_ENV in os.environ)
     return Engine(incident_workflow(deps), args.root or default_root(), crash_hook=hook, poll_interval=0.2)
 
 
@@ -122,11 +126,15 @@ def cmd_demo(args: argparse.Namespace) -> int:
     """Kill a worker with SIGKILL mid-run, resume it, approve, and show that no finished step ran twice."""
     root = args.root or tempfile.mkdtemp(prefix="durable-demo-")
     run_id = "demo-1"
-    print(f"runs directory: {root}\n1) start INC-002 and kill the worker right after 'diagnose' finished")
+    os.environ[UNSIGNED_ENV] = "1"  # the demo has no approval gate: it plays the operator (children inherit this)
+    print(
+        "NOTE demo only: approvals are accepted unsigned here; the real path is the Stage 18 gate with sealed decisions"
+    )
+    print(f"runs directory: {root}\n1) start INC-002 and kill the worker (SIGKILL) right after 'diagnose' finished")
     first = _child(
         ["start", "INC-002", "--run-id", run_id, "--no-wait", "--crash-after", "step_completed:diagnose"], root
     )
-    print(f"   worker exit code: {first.returncode} (negative on POSIX; nonzero indicates termination)")
+    print(f"   worker exit code: {first.returncode} (negative = killed by a signal)")
     engine = Engine(incident_workflow(), root)
     before = engine.state(run_id)
     print(f"2) journal after the crash: status={before.status}, finished steps={list(before.results)}")

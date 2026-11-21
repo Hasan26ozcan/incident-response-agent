@@ -664,8 +664,14 @@ class Rig:
         self.backend = FakeBackend()
         d = data or DATA
         pol = policy(required)
+        from incident_agent.security import ApprovalSigner
+
+        self.signer = ApprovalSigner(b"k" * 32)
         deps = wf.Deps(
-            backend_factory=lambda: self.backend, data_loader=lambda _i: d, approval_timeout=pol.total_timeout
+            backend_factory=lambda: self.backend,
+            data_loader=lambda _i: d,
+            approval_timeout=pol.total_timeout,
+            signer=self.signer,
         )
         from incident_agent.durable.engine import Clock
 
@@ -689,7 +695,7 @@ class Rig:
             CallbackNotifier(lambda n: self.notes.append(n)),
             self.clk,
         )
-        self.ctl = Controller(self.gate, self.engine)
+        self.ctl = Controller(self.gate, self.engine, signer=self.signer)
 
     def start(self, run_id: str = "r1", **extra: Any) -> None:
         self.engine.start(run_id, {"incident_id": "INC-777", **extra})
@@ -834,7 +840,7 @@ def test_a_duplicate_delivery_cannot_run_the_action_twice(rig: Rig) -> None:
 
 def test_drive_false_leaves_resuming_to_someone_else(tmp_path: Path) -> None:
     r = Rig(tmp_path)
-    r.ctl = Controller(r.gate, r.engine, drive=False)
+    r.ctl = Controller(r.gate, r.engine, drive=False, signer=r.signer)
     r.start()
     r.ctl.step()
     r.gate.approve(r.rid(), "alice", r.tokens["alice"], confirm=r.fp())

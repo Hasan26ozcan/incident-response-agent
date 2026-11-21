@@ -19,6 +19,7 @@ Exit codes: `0` pass, `1` regression, `2` error. The full report is written to `
 | `planner` | the command the workflow proposes per incident (pinned), mutating plans on gold false alarms (must be 0) | 17 |
 | `agentic` | **end-to-end runs of the real durable engine + approval gate** under 11 scenarios | 16, 17, 18 |
 | `controls` | deliberately broken variants the metrics must flag | 19 |
+| `security` | the Stage 20 attack suite (31 attacks; see `docs/SECURITY_REPORT.md`) | 20 |
 | `diagnosis` | R0 rule-based ReAct vs gold (F1, evidence, risk, false-alarm accuracy) | 3 |
 | `retrieval` | hybrid retrieval MRR / hit@1 for log, paraphrase and symptom queries (hashing embedder) | 10–12 |
 | `memory` | KB-only vs KB+episodic-memory accuracy on recurring incidents | 12 |
@@ -37,7 +38,7 @@ Exit codes: `0` pass, `1` regression, `2` error. The full report is written to `
 
 approve · reject · silence (all escalation levels time out) · self-approval · outsider · wrong fingerprint then correct
 approval · crash after planning · crash inside `execute` · backend fault *after* the change · cancel while waiting ·
-**forged signal (known gap)**.
+**forged signal** (a known gap in Stage 19, closed in Stage 20).
 
 Time is simulated (`SimClock`), so a 20-minute escalation chain takes microseconds and every number is deterministic
 (two runs produce byte-identical reports).
@@ -64,10 +65,10 @@ anything but the full suite on the full dev split.
 
 ## Honest limits
 
-* **Known gap (open): forged approval signal.** The durable `approval` wait accepts any `approval` signal written to
-  the run directory, so a local actor with file-system access bypasses the gate. The harness reports it as a known gap
-  (4 open, one per mutating dev incident), does not hide it, and does not gate on it; a test fails when it closes so the
-  docs are updated. Stage 20 owns the fix.
+* **Forged approval signal: closed in Stage 20.** The wait used to accept any `approval` signal written to the run
+  directory; decisions are now sealed by the gate and verified in `execute` (`docs/STAGE20_SECURITY.md`). The
+  *known-gap* mechanism (reported, never gated, a test forces the docs to be updated when it closes) stays in the
+  harness for the next weakness; at the moment no scenario uses it.
 * The isolation backend is a plain subprocess that *claims* the guarantees; real isolation is Stage 16's selftest.
   This stage evaluates the orchestration and approval logic, not the sandbox.
 * Only 4 of 14 dev incidents get mutating plans, and the planner is a keyword table. The suite pins its output, it

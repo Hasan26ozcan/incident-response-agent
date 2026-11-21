@@ -6,6 +6,7 @@ Sections (all on the **dev** split; the test split is never opened here and ther
 * ``agentic``   - end-to-end runs of the real durable engine + approval gate under 10 scenarios: task completion,
                   efficiency, safety invariants checked on the backend wire
 * ``controls``  - deliberately broken variants the metrics must flag (an eval that cannot fail proves nothing)
+* ``security``  - the Stage 20 attack suite (injection, forged approvals, kill-switch, hostile input)
 * ``diagnosis`` - the Stage 3 harness (R0 rule-based ReAct) on dev
 * ``retrieval`` - hybrid retrieval on dev (hashing embedder, so CI needs no model download)
 * ``memory``    - episodic memory on the recurrence set
@@ -28,7 +29,7 @@ from incident_agent.durable import workflows as wf
 from incident_agent.durable.engine import StepContext
 from incident_agent.eval import harness
 
-SECTIONS = ("planner", "agentic", "controls", "diagnosis", "retrieval", "memory")
+SECTIONS = ("planner", "agentic", "controls", "security", "diagnosis", "retrieval", "memory")
 ROOT = Path(__file__).resolve().parents[3]
 BASELINE = ROOT / "eval" / "agentic" / "baseline.json"
 TOLERANCE = {"quality": 0.02, "efficiency": 1.15}
@@ -143,6 +144,13 @@ def controls_section(ids: Sequence[str], plans: dict[str, dict[str, Any]]) -> di
 # ------------------------------------------------------------------------------------------------ the existing evals
 
 
+def security_section(ids: Sequence[str]) -> dict[str, Any]:
+    from incident_agent.security import attacks
+
+    results = attacks.run_attacks(list(ids))
+    return {**attacks.summarise(results), "results": [r.__dict__ for r in results]}
+
+
 def diagnosis_section(ids: Sequence[str]) -> dict[str, Any]:
     keys = ("root_cause_f1", "evidence_recall", "risk_accuracy", "false_alarm_accuracy", "answered_rate")
     summary = harness.evaluate(harness.react_baseline, ids=list(ids))["summary"]
@@ -208,6 +216,8 @@ def run_suite(sections: Sequence[str] = SECTIONS, ids: Sequence[str] | None = No
             report[name] = agentic_section(use, plans)
         elif name == "controls":
             report[name] = controls_section(use, plans)
+        elif name == "security":
+            report[name] = security_section(use)
         elif name == "diagnosis":
             report[name] = diagnosis_section(use)
         elif name == "retrieval":
@@ -235,6 +245,9 @@ def baseline_from(report: dict[str, Any]) -> dict[str, Any]:
             "efficiency": s["efficiency"],
             "known_gaps_open": s["known_gaps_open"],
         }
+    if "security" in report:
+        sec = report["security"]
+        base["security"] = {"attacks": sec["attacks"], "verdicts": sec["verdicts"]}
     for k in ("diagnosis", "retrieval", "memory"):
         if k in report:
             base[k] = report[k]
@@ -280,6 +293,24 @@ def gate(report: dict[str, Any], base: dict[str, Any]) -> tuple[list[str], list[
         for c in report["controls"]["controls"]:
             if not c["flagged"]:
                 fail.append(f"negative control {c['control']!r} was NOT flagged: the {c['must_flag']} metric is blind")
+    if "security" in report:
+        sec, b = report["security"], base.get("security", {})
+        for r in sec["results"]:
+            if r["verdict"] == "vulnerable":
+                fail.append(f"SECURITY: {r['id']} {r['title']}: {r['detail']}")
+        bv = b.get("verdicts", {})
+        for verdict in ("exposed", "gap", "evaded"):
+            if sec["verdicts"][verdict] > bv.get(verdict, 0):
+                fail.append(
+                    f"security: more {verdict} attacks ({sec['verdicts'][verdict]}) "
+                    f"than the baseline ({bv.get(verdict, 0)})"
+                )
+            elif sec["verdicts"][verdict] < bv.get(verdict, 0):
+                notes.append(f"security: a {verdict} item is resolved: run --update-baseline and update the docs")
+        if sec["attacks"] < b.get("attacks", 0):
+            fail.append(
+                f"security: {sec['attacks']} attacks run, the baseline has {b['attacks']} (an attack was removed)"
+            )
     for section, keys in (
         ("diagnosis", ("root_cause_f1", "evidence_recall", "risk_accuracy", "false_alarm_accuracy", "answered_rate")),
         ("memory", ("kb_accuracy", "combined_accuracy", "memory_precision")),

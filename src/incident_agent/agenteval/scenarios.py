@@ -63,8 +63,7 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario(
         "forged_signal",
         Human("forge", "mallory"),
-        doc="a local actor writes an approval signal into the run directory, bypassing the gate",
-        known_gap="the durable approval wait accepts any 'approval' signal; Stage 20 must authenticate it",
+        doc="a local actor writes an unsealed approval signal into the run directory (closed in Stage 20)",
     ),
 )
 READ_ONLY = Scenario("read_only", Human("approve", "alice"), doc="a plan that changes nothing")
@@ -85,7 +84,7 @@ def expected(scn: Scenario, mutating: bool) -> Expectation:
         "crash_in_execute": Expectation("failed", "", 0, "approved"),
         "backend_fault": Expectation("completed", "applied", 1, "approved"),
         "cancel": Expectation("cancelled", "", 0),
-        "forged_signal": Expectation("completed", "dry_run", 0),  # what *should* happen; the gap makes it apply
+        "forged_signal": Expectation("completed", "dry_run", 0),
     }
     return table[scn.name]
 

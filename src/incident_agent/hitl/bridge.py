@@ -35,8 +35,8 @@ def approval_payload(state: RequestState) -> dict[str, Any]:
 
 
 class Controller:
-    def __init__(self, gate: ApprovalGate, engine: Engine, *, drive: bool = True) -> None:
-        self.gate, self.engine, self.drive = gate, engine, drive
+    def __init__(self, gate: ApprovalGate, engine: Engine, *, drive: bool = True, signer: Any = None) -> None:
+        self.gate, self.engine, self.drive, self.signer = gate, engine, drive, signer
 
     def _wait_deadline(self, run_id: str) -> float | None:
         from incident_agent.durable.journal import Journal
@@ -79,22 +79,19 @@ class Controller:
     def deliver(self, report: dict[str, list[Any]]) -> None:
         for rid in self.gate.store.ids():
             st = self.gate.store.state(rid)
-            if st.pending:
+            if st.pending or st.delivered:
                 continue
             try:
                 run = self.engine.state(st.run_id)
                 if run.status == "waiting" and run.waiting_for == WAIT_STEP:
-                    if not st.delivered:
-                        self.engine.signal(st.run_id, WAIT_STEP, approval_payload(st))
-                        self.gate.mark_delivered(rid)
-                        report["delivered"].append(rid)
-                    if self.drive:
-                        self.engine.run(st.run_id, block=False)
-                elif not st.delivered:
-                    self.gate.mark_delivered(rid)
-                    report["delivered"].append(rid)
-                    if self.drive:
-                        self.engine.run(st.run_id, block=False)
+                    payload = approval_payload(st)
+                    if self.signer is not None:  # only the gate can seal a decision (Stage 20)
+                        payload = self.signer.seal(st.run_id, st.fingerprint, payload)
+                    self.engine.signal(st.run_id, WAIT_STEP, payload)
+                self.gate.mark_delivered(rid)
+                report["delivered"].append(rid)
+                if self.drive:
+                    self.engine.run(st.run_id, block=False)
             except LockError:
                 continue  # another worker is running it right now; the decision is stored and tried again
             except (KeyError, ValueError, JournalError) as exc:

@@ -61,6 +61,8 @@ class Deps:
     data_loader: Callable[[str], dict[str, Any]] | None = None
     retry: RetryPolicy = field(default_factory=lambda: RetryPolicy(max_attempts=3, initial_delay=0.2, max_delay=2.0))
     approval_timeout: float = 300.0
+    signer: Any = None  # security.ApprovalSigner: the key the approval gate seals decisions with
+    allow_unsigned: bool = False  # INSECURE, tests/demos only: accept an unsealed 'approval' signal
 
 
 def default_root() -> Path:
@@ -164,6 +166,17 @@ def needs_approval(results: dict[str, Any]) -> bool:
     return (results.get("plan_action") or {}).get("verdict") == "needs_approval"
 
 
+def approval_check(deps: Deps, run_id: str, fingerprint: str, payload: dict[str, Any]) -> str:
+    """Is this approval payload authentic? ``verified`` | ``unsigned_allowed`` | ``refused:<why>`` (fails closed)."""
+    if deps.allow_unsigned:
+        return "unsigned_allowed"
+    if deps.signer is None:
+        return "refused:no signer configured"
+    if not isinstance(payload.get("sig"), str):
+        return "refused:unsigned"
+    return "verified" if deps.signer.verify(run_id, fingerprint, payload) else "refused:bad signature"
+
+
 def make_execute(deps: Deps) -> Callable[[StepContext], dict[str, Any]]:
     def execute(ctx: StepContext) -> dict[str, Any]:
         plan = ctx.results["plan_action"]
@@ -174,16 +187,18 @@ def make_execute(deps: Deps) -> Callable[[StepContext], dict[str, Any]]:
             runner = SandboxRunner(deps.backend_factory(), audit, data_loader=deps.data_loader)
         else:
             runner = SandboxRunner(deps.backend_factory(), audit)
-        line, approval, mode = plan["command_line"], None, "run"
+        line, approval, mode, check = plan["command_line"], None, "run", "not_required"
         if plan["verdict"] == "needs_approval":
             answer = ctx.results.get("approval") or {}
             payload = answer.get("payload") or {}
             approver = payload.get("by")
+            check = approval_check(deps, ctx.run_id, plan["fingerprint"], payload)
             if (
                 not answer.get("timed_out")
                 and payload.get("approved") is True
                 and isinstance(approver, str)
                 and approver.strip()
+                and check in ("verified", "unsigned_allowed")
             ):
                 now = runner._clock()  # noqa: SLF001 - the runner's clock decides expiry
                 approval = Approval(
@@ -206,6 +221,7 @@ def make_execute(deps: Deps) -> Callable[[StepContext], dict[str, Any]]:
             "changed": result.changed,
             "backend": result.backend,
             "approved_by": approval.approved_by if approval else None,
+            "approval_check": check,
         }
 
     return execute
