@@ -1,0 +1,9 @@
+{
+  "_note": "USD per 1M tokens. Only prices verified against the provider's public page are listed; any model not listed is UNPRICED and reported as unknown, never guessed.",
+  "_verified": "2026-11-21",
+  "models": {
+    "mistral-large-latest": {"input": 0.5, "output": 1.5, "cached_input": null, "source": "https://mistral.ai/pricing"},
+    "openai/gpt-oss-120b": {"input": 0.15, "output": 0.6, "cached_input": 0.075, "source": "https://console.groq.com/docs/models"},
+    "openai/gpt-oss-20b": {"input": 0.075, "output": 0.3, "cached_input": 0.0375, "source": "https://console.groq.com/docs/models"}
+  }
+}

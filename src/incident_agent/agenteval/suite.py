@@ -7,6 +7,7 @@ Sections (all on the **dev** split; the test split is never opened here and ther
                   efficiency, safety invariants checked on the backend wire
 * ``controls``  - deliberately broken variants the metrics must flag (an eval that cannot fail proves nothing)
 * ``security``  - the Stage 20 attack suite (injection, forged approvals, kill-switch, hostile input)
+* ``observability`` - the Stage 21 self-checks (redaction, traces from journals, cascade saving, window invariants)
 * ``diagnosis`` - the Stage 3 harness (R0 rule-based ReAct) on dev
 * ``retrieval`` - hybrid retrieval on dev (hashing embedder, so CI needs no model download)
 * ``memory``    - episodic memory on the recurrence set
@@ -29,7 +30,7 @@ from incident_agent.durable import workflows as wf
 from incident_agent.durable.engine import StepContext
 from incident_agent.eval import harness
 
-SECTIONS = ("planner", "agentic", "controls", "security", "diagnosis", "retrieval", "memory")
+SECTIONS = ("planner", "agentic", "controls", "security", "observability", "diagnosis", "retrieval", "memory")
 ROOT = Path(__file__).resolve().parents[3]
 BASELINE = ROOT / "eval" / "agentic" / "baseline.json"
 TOLERANCE = {"quality": 0.02, "efficiency": 1.15}
@@ -151,6 +152,12 @@ def security_section(ids: Sequence[str]) -> dict[str, Any]:
     return {**attacks.summarise(results), "results": [r.__dict__ for r in results]}
 
 
+def observability_section(ids: Sequence[str], plans: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    from incident_agent.observe import selfcheck
+
+    return selfcheck.run(ids[0], plans[ids[0]])
+
+
 def diagnosis_section(ids: Sequence[str]) -> dict[str, Any]:
     keys = ("root_cause_f1", "evidence_recall", "risk_accuracy", "false_alarm_accuracy", "answered_rate")
     summary = harness.evaluate(harness.react_baseline, ids=list(ids))["summary"]
@@ -218,6 +225,8 @@ def run_suite(sections: Sequence[str] = SECTIONS, ids: Sequence[str] | None = No
             report[name] = controls_section(use, plans)
         elif name == "security":
             report[name] = security_section(use)
+        elif name == "observability":
+            report[name] = observability_section(use, plans)
         elif name == "diagnosis":
             report[name] = diagnosis_section(use)
         elif name == "retrieval":
@@ -248,6 +257,13 @@ def baseline_from(report: dict[str, Any]) -> dict[str, Any]:
     if "security" in report:
         sec = report["security"]
         base["security"] = {"attacks": sec["attacks"], "verdicts": sec["verdicts"]}
+    if "observability" in report:
+        o = report["observability"]
+        base["observability"] = {
+            "checks": sorted(o["checks"]),
+            "controls": len(o["controls"]),
+            "cascade_saving": o["cascade_saving"],
+        }
     for k in ("diagnosis", "retrieval", "memory"):
         if k in report:
             base[k] = report[k]
@@ -310,6 +326,20 @@ def gate(report: dict[str, Any], base: dict[str, Any]) -> tuple[list[str], list[
         if sec["attacks"] < b.get("attacks", 0):
             fail.append(
                 f"security: {sec['attacks']} attacks run, the baseline has {b['attacks']} (an attack was removed)"
+            )
+    if "observability" in report:
+        o, b = report["observability"], base.get("observability", {})
+        for name, ok in o["checks"].items():
+            if not ok:
+                fail.append(f"observability: check {name!r} failed")
+        for c in o["controls"]:
+            if not c["flagged"]:
+                fail.append(f"observability: negative control {c['control']!r} was NOT flagged: the check is blind")
+        if set(b.get("checks", [])) - set(o["checks"]):
+            fail.append("observability: a check was removed")
+        if o["cascade_saving"] < b.get("cascade_saving", 0.0) - q:
+            fail.append(
+                f"observability: cascade saving {o['cascade_saving']} < baseline {b.get('cascade_saving')} - {q}"
             )
     for section, keys in (
         ("diagnosis", ("root_cause_f1", "evidence_recall", "risk_accuracy", "false_alarm_accuracy", "answered_rate")),

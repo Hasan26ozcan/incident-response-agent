@@ -39,6 +39,9 @@ jobs:
       - name: Security test report (artifact only; nothing is committed)
         run: python -m incident_agent.security report --out eval/results/SECURITY_REPORT.md
 
+      - name: Cost / latency report and dashboard (simulated demo; artifact only)
+        run: python -m incident_agent.observe demo --out eval/results/observability
+
       - name: Job summary
         if: always()
         run: |
@@ -57,5 +60,6 @@ jobs:
           path: |
             eval/results/agentic.json
             eval/results/SECURITY_REPORT.md
+            eval/results/observability/
             eval-summary.txt
           if-no-files-found: ignore

@@ -35,6 +35,13 @@ def render(report: dict, fail: list[str], notes: list[str]) -> str:
                 f"{c['control']}={'caught' if c['flagged'] else 'MISSED'}" for c in report["controls"]["controls"]
             )
         )
+    if "observability" in report:
+        o = report["observability"]
+        lines.append(
+            f"observability  checks {sum(o['checks'].values())}/{len(o['checks'])}"
+            f"  controls flagged {sum(c['flagged'] for c in o['controls'])}/{len(o['controls'])}"
+            f"  cascade saving {o['cascade_saving']:.0%}"
+        )
     if "security" in report:
         sec = report["security"]
         lines.append(f"security   {sec['attacks']} attacks  " + json.dumps(sec["verdicts"], sort_keys=True))

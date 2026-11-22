@@ -44,6 +44,18 @@
     "misled": 0,
     "n": 14
   },
+  "observability": {
+    "cascade_saving": 0.25,
+    "checks": [
+      "cascade",
+      "journal_traces",
+      "prefix",
+      "redaction",
+      "trace_shape",
+      "window"
+    ],
+    "controls": 3
+  },
   "planner": {
     "commands": {
       "INC-001": "scale-service checkout-api --replicas 4",
