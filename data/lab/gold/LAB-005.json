@@ -1,0 +1,22 @@
+{
+  "root_cause": "Not an incident: a planned load test raised traffic fivefold; latency stays within normal bounds and there are no errors.",
+  "evidence": [
+    "metric:rps is several times baseline",
+    "log: no errors or warnings",
+    "metric:error_rate_percent stays at 0"
+  ],
+  "recommended_remediation": "No remediation needed. Close the alert and silence it for approved load-test windows.",
+  "remediation_risk_tier": "low",
+  "risk_rationale": "No action is taken.",
+  "incident_id": "LAB-005",
+  "title": "false alarm approved load test (live)",
+  "category": "false_alarm_loadtest",
+  "difficulty": "lab",
+  "is_false_alarm": true,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "21b"
+  ],
+  "source": "fault-lab (real processes)"
+}

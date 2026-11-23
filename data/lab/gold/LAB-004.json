@@ -1,0 +1,22 @@
+{
+  "root_cause": "Deploy 2.4.1 of checkout-api shipped without the PAYMENT_API_URL setting, so every request raises a KeyError.",
+  "evidence": [
+    "deploy: version 2.4.1 deployed minutes before the errors began",
+    "log: repeated \"KeyError: 'PAYMENT_API_URL' missing in config\"",
+    "metric:error_rate_percent jumps to ~100% right after the deploy"
+  ],
+  "recommended_remediation": "Roll back checkout-api to 2.3.0, then re-deploy 2.4.x with the PAYMENT_API_URL setting present.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Rolling back a production deploy is a high-risk action.",
+  "incident_id": "LAB-004",
+  "title": "bad deploy missing config (live)",
+  "category": "bad_deploy",
+  "difficulty": "lab",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "21b"
+  ],
+  "source": "fault-lab (real processes)"
+}

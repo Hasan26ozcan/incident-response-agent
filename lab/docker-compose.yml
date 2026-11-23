@@ -1,0 +1,26 @@
+# Fault lab: checkout-api (system under investigation) + payments-stub (its dependency) + a load generator.
+# Start:  docker compose -f lab/docker-compose.yml up --build -d
+# Inject: python -m incident_agent.lab.live capture LAB-003      (see docs/STAGE21B_FAULT_LAB.md)
+name: incident-lab
+services:
+  payments-stub:
+    build: {context: .., dockerfile: lab/Dockerfile}
+    command: ["--service", "payments-stub", "--host", "0.0.0.0", "--port", "8081"]
+    environment: {LAB_LOG_DIR: /logs}
+    volumes: ["./out/logs:/logs"]
+    ports: ["127.0.0.1:8081:8081"]
+    mem_limit: 256m
+    healthcheck: {test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8081/health')"], interval: 5s, timeout: 3s, retries: 5}
+  checkout-api:
+    build: {context: .., dockerfile: lab/Dockerfile}
+    command: ["--service", "checkout-api", "--host", "0.0.0.0", "--port", "8080", "--dep", "http://payments-stub:8081"]
+    environment: {LAB_LOG_DIR: /logs}
+    volumes: ["./out/logs:/logs"]
+    ports: ["127.0.0.1:8080:8080"]
+    mem_limit: 256m
+    depends_on: {payments-stub: {condition: service_healthy}}
+    healthcheck: {test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/health')"], interval: 5s, timeout: 3s, retries: 5}
+  loadgen:
+    build: {context: .., dockerfile: lab/Dockerfile}
+    entrypoint: ["python", "-c", "import time,urllib.request\nwhile True:\n  try: urllib.request.urlopen('http://checkout-api:8080/checkout',timeout=4)\n  except Exception: pass\n  time.sleep(0.15)"]
+    depends_on: {checkout-api: {condition: service_healthy}}

@@ -1,0 +1,18 @@
+{
+  "incident_id": "LAB-003",
+  "alert_name": "Alert: elevated errors or latency \u2014 checkout-api",
+  "services": [
+    "checkout-api",
+    "payments-stub"
+  ],
+  "window_start": "2026-11-21T12:06:24+00:00",
+  "window_end": "2026-11-21T12:07:00+00:00",
+  "available_metrics": [
+    "cpu_percent",
+    "latency_p99_ms",
+    "mem_mb",
+    "error_rate_percent",
+    "rps"
+  ],
+  "note": "Captured from real processes by the fault lab. The metadata names services and window, never the cause."
+}

@@ -1,0 +1,22 @@
+{
+  "root_cause": "An unbounded retry loop in checkout-api's handler burns CPU on every request and starves the worker threads.",
+  "evidence": [
+    "metric:cpu_percent rises to saturation when the fault starts",
+    "metric:latency_p99_ms rises with it",
+    "log: repeated 'possible unbounded loop detected in retry handler' from checkout-api"
+  ],
+  "recommended_remediation": "Restart the affected checkout-api instances to shed the stuck work, then patch the retry handler to cap attempts.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Restarting a production service is an explicit high-risk action.",
+  "incident_id": "LAB-001",
+  "title": "cpu runaway retry loop (live)",
+  "category": "cpu_exhaustion",
+  "difficulty": "lab",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "21b"
+  ],
+  "source": "fault-lab (real processes)"
+}

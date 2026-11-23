@@ -1,0 +1,22 @@
+{
+  "root_cause": "payments-stub became slow (responses take seconds), so checkout-api calls time out and return 504s.",
+  "evidence": [
+    "log: checkout-api 'upstream payments-stub timeout after 1000ms'",
+    "metric:latency_p99_ms of checkout-api jumps to the timeout",
+    "metric:error_rate_percent rises on checkout-api while its own CPU and memory stay normal"
+  ],
+  "recommended_remediation": "Fix or fail over payments-stub; meanwhile enable a circuit breaker or fallback in checkout-api. Do not restart checkout-api.",
+  "remediation_risk_tier": "medium",
+  "risk_rationale": "The fix is in a dependency; changing checkout-api configuration is medium risk.",
+  "incident_id": "LAB-003",
+  "title": "dependency timeout cascade (live)",
+  "category": "cascading_failure",
+  "difficulty": "lab",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "21b"
+  ],
+  "source": "fault-lab (real processes)"
+}

@@ -1,0 +1,22 @@
+{
+  "root_cause": "checkout-api retains memory on every request; the heap grows until allocations fail with OutOfMemory errors.",
+  "evidence": [
+    "metric:mem_mb grows steadily after the fault starts",
+    "log: 'heap usage ... approaching limit' warnings then OutOfMemory errors",
+    "metric:error_rate_percent rises once the heap limit is hit"
+  ],
+  "recommended_remediation": "Restart checkout-api to reclaim memory and roll back or fix the change that retains per-request objects.",
+  "remediation_risk_tier": "high",
+  "risk_rationale": "Restarting or rolling back a production service is high risk.",
+  "incident_id": "LAB-002",
+  "title": "memory leak heap exhaustion (live)",
+  "category": "memory_leak",
+  "difficulty": "lab",
+  "is_false_alarm": false,
+  "recurrence_of": null,
+  "distractor_note": null,
+  "primary_stage_use": [
+    "21b"
+  ],
+  "source": "fault-lab (real processes)"
+}
