@@ -213,7 +213,11 @@ def inj_false_positives(_c: Ctx) -> tuple[str, str]:
     )
 
 
-@attack("INJ-09", "injection", "the LLM prompt builder passes log text through verbatim (not wired to the defence)")
+@attack(
+    "INJ-09",
+    "injection",
+    "the LLM prompt builder passes log text through verbatim unless the caller opts in to hardening",
+)
 def inj_prompt_exposed(_c: Ctx) -> tuple[str, str]:
     from incident_agent.prompts.builder import build_prompt
 
@@ -222,9 +226,37 @@ def inj_prompt_exposed(_c: Ctx) -> tuple[str, str]:
     if evil in prompt:
         return (
             "exposed",
-            "build_prompt embeds attacker log lines unmodified; injection.harden() exists but is not wired",
+            "build_prompt and the ReAct tool loop embed attacker log lines unmodified by default; hardening is opt-in "
+            "(on in the pipeline, see INJ-12 and INJ-13)",
         )
     return "blocked", "build_prompt no longer carries the raw attacker text"
+
+
+@attack("INJ-12", "injection", "hardened tool output: attacker lines never reach the model through the ReAct tool loop")
+def inj_tool_output(_c: Ctx) -> tuple[str, str]:
+    from incident_agent.agents import tool_loop
+
+    det = [p for p in corpus.PAYLOADS if p.detectable]
+    text = "\n".join([*(p.text for p in det), "ordinary line"])
+    with tool_loop.hardened():
+        out = tool_loop.wrap_output(text)
+    leaked = [p.id for p in det if p.text in out]
+    kept = "ordinary line" in out
+    return _ok(
+        not leaked and kept,
+        f"{len(det)} attack lines removed from wrapped tool output, clean line kept",
+        f"leaked {leaked}, clean line kept {kept}",
+    )
+
+
+@attack("INJ-13", "injection", "build_prompt(harden=True) removes attacker lines")
+def inj_prompt_hardened(_c: Ctx) -> tuple[str, str]:
+    from incident_agent.prompts.builder import build_prompt
+
+    det = [p for p in corpus.PAYLOADS if p.detectable]
+    prompt = build_prompt("INC-X", "unknown", ["svc"], "t0", "t1", [p.text for p in det], {}, [], harden=True)
+    leaked = [p.id for p in det if p.text in prompt]
+    return _ok(not leaked, f"{len(det)} attack lines absent from the hardened prompt", f"leaked {leaked}")
 
 
 @attack("INJ-10", "injection", "injection.harden() removes attacker lines and the envelope cannot be closed early")

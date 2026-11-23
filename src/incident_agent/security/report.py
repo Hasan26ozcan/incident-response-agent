@@ -13,7 +13,10 @@ AREAS = {
 OWNERS = {
     "INJ-04": "Needs corroboration across logs, metrics and deploys in the diagnosers; not a text-filter problem.",
     "INJ-07": "A semantic classifier (LLM judge) could shrink this; it would itself be attackable.",
-    "INJ-09": "Wire `injection.harden()` into the prompt builder; needs the owner's go-ahead (agents untouched).",
+    "INJ-09": (
+        "Hardening is on in the pipeline but off by default elsewhere; "
+        "making it the default changes dataset scores, so it needs the owner's decision."
+    ),
     "APP-08": "Integrity chain for the request store, or run the gate and the worker as different OS users.",
 }
 ICON = {"blocked": "pass", "exposed": "EXPOSED", "evaded": "evaded", "gap": "GAP", "vulnerable": "FAIL"}

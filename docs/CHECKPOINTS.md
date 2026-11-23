@@ -15,3 +15,4 @@ git tag checkpoint-NN
 | 20 | 2026-11-20 | Stage 20 adversarial security | stage20-patch.zip | 2329 tests |
 | 21 | 2026-11-21 | Stage 21 observability and cost | stage21-patch.zip | 71 new tests, gate PASS |
 | 22 | 2026-11-22 | Stage 21b fault lab (real processes, Docker Compose, LAB ids) | stage21b-patch.zip | 28 lab tests |
+| 23 | 2026-11-22 | Stage 21c end-to-end pipeline, shadow mode, INJ-09 closed in the pipeline | stage21c-patch.zip | 35 pipeline tests, security 0 vulnerable |

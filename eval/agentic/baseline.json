@@ -92,9 +92,9 @@
   },
   "schema": 1,
   "security": {
-    "attacks": 31,
+    "attacks": 33,
     "verdicts": {
-      "blocked": 27,
+      "blocked": 29,
       "evaded": 1,
       "exposed": 2,
       "gap": 1,

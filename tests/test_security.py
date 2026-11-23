@@ -453,7 +453,7 @@ def results() -> list[attacks.Result]:
 
 def test_every_attack_has_the_expected_verdict(results: list[attacks.Result]) -> None:
     got = {r.id: r.verdict for r in results}
-    assert set(got) == {a[0] for a in attacks.REGISTRY} and len(got) == len(attacks.REGISTRY) == 31
+    assert set(got) == {a[0] for a in attacks.REGISTRY} and len(got) == len(attacks.REGISTRY) == 33
     for aid, verdict in got.items():
         assert verdict == EXPECTED.get(aid, "blocked"), f"{aid}: {verdict}"
 
@@ -465,7 +465,7 @@ def test_ids_are_unique_and_areas_known(results: list[attacks.Result]) -> None:
 
 def test_summary(results: list[attacks.Result]) -> None:
     s = attacks.summarise(results)
-    assert s["verdicts"] == {"blocked": 27, "exposed": 2, "evaded": 1, "gap": 1, "vulnerable": 0}
+    assert s["verdicts"] == {"blocked": 29, "exposed": 2, "evaded": 1, "gap": 1, "vulnerable": 0}
     assert s["vulnerable"] == [] and s["exposed"] == ["INJ-04", "INJ-09"] and s["gaps"] == ["APP-08"]
     assert s["evaded"] == ["INJ-07"]
 
@@ -513,6 +513,10 @@ def test_attacks_notice_when_a_defence_is_removed(monkeypatch: pytest.MonkeyPatc
         "INJ-06": lambda m: m.setattr(injection, "scan_line", lambda *a, **k: []),
         "INJ-08": lambda m: m.setattr(injection, "scan_line", lambda *a, **k: [injection.Finding("x", "y")]),
         "INJ-10": lambda m: m.setattr(injection, "harden", lambda lines, label="logs": "\n".join(lines)),
+        "INJ-12": lambda m: m.setattr(
+            "incident_agent.agents.tool_loop.hardened", lambda enabled=True: __import__("contextlib").nullcontext()
+        ),
+        "INJ-13": lambda m: m.setattr(injection, "harden", lambda lines, label="logs": "\n".join(lines)),
         "INJ-11": lambda m: (
             m.setattr("incident_agent.hitl.notify.one_line", lambda t, *a, **k: t),
             m.setattr("incident_agent.hitl.gate.one_line", lambda t, *a, **k: t),
@@ -528,7 +532,7 @@ def test_attacks_notice_when_a_defence_is_removed(monkeypatch: pytest.MonkeyPatc
 
 def test_markdown_report(results: list[attacks.Result]) -> None:
     md = report.to_markdown(results)
-    assert md.startswith("# Security test report") and "31 attacks" in md
+    assert md.startswith("# Security test report") and "33 attacks" in md
     for area_title in report.AREAS.values():
         assert f"## {area_title}" in md
     assert "| APP-08 |" in md and "GAP" in md and "EXPOSED" in md and "## Open items" in md
@@ -606,7 +610,7 @@ def test_cli_killswitch_default_dir_comes_from_the_environment(
 
 def test_security_section_runs_in_the_suite_and_gates() -> None:
     r = suite.run_suite(("security",))
-    assert r["security"]["attacks"] == 31 and r["security"]["verdicts"]["vulnerable"] == 0
+    assert r["security"]["attacks"] == 33 and r["security"]["verdicts"]["vulnerable"] == 0
     base = suite.load_baseline()
     assert suite.gate(r, base) == ([], [])
     bad = json.loads(json.dumps(r))
