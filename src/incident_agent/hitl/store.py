@@ -8,6 +8,9 @@ attempt stay in the log.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import re
 import time
 from collections.abc import Callable, Iterator
@@ -21,6 +24,26 @@ from incident_agent.durable.journal import Journal, LockError, RunLock
 REQUEST_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
 MAX_DENIED_RECORDS = 50  # refused attempts are logged, but a flood cannot grow the journal without bound
 TERMINAL = frozenset({"approved", "rejected", "expired", "cancelled"})
+
+
+class StoreTampered(ValueError):
+    """The request journal does not match its integrity chain: someone wrote to it without the seal key."""
+
+
+def _seal(key: bytes, request_id: str, prev: str, event: dict[str, Any]) -> str:
+    body = {k: v for k, v in event.items() if k != "_seal"}
+    msg = (request_id + "|" + prev + "|" + json.dumps(body, sort_keys=True)).encode()
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()
+
+
+def verify_chain(key: bytes, request_id: str, events: list[dict[str, Any]]) -> None:
+    """Raise StoreTampered unless every event carries the seal that follows from the one before it."""
+    prev = ""
+    for e in events:
+        seal = e.get("_seal")
+        if not isinstance(seal, str) or not hmac.compare_digest(seal, _seal(key, request_id, prev, e)):
+            raise StoreTampered(f"request {request_id}: event {e.get('seq')} is not sealed by the gate")
+        prev = seal
 
 
 def check_request_id(request_id: str) -> str:
@@ -139,9 +162,14 @@ def fold(request_id: str, events: list[dict[str, Any]]) -> RequestState:
 
 
 class RequestStore:
-    def __init__(self, root: str | Path, clock: Callable[[], float] = time.time) -> None:
+    def __init__(
+        self, root: str | Path, clock: Callable[[], float] = time.time, *, seal_key: bytes | None = None
+    ) -> None:
         self.root = Path(root)
         self.clock = clock
+        if seal_key is not None and len(seal_key) < 16:
+            raise ValueError("the seal key must be at least 16 bytes")
+        self._key = seal_key  # Stage 21e: with a key, every event is chained (HMAC) and a forged line is refused
 
     def dir(self, request_id: str) -> Path:
         return self.root / check_request_id(request_id)
@@ -163,10 +191,21 @@ class RequestStore:
         j = self.journal(request_id)
         if not j.exists():
             raise KeyError(f"unknown request {request_id!r}")
-        return fold(request_id, j.events())
+        events = j.events()
+        if self._key is not None:
+            verify_chain(self._key, request_id, events)
+        return fold(request_id, events)
 
     def append(self, request_id: str, kind: str, **fields: Any) -> dict[str, Any]:
-        return self.journal(request_id).append(kind, **fields)
+        j = self.journal(request_id)
+        if self._key is None:
+            return j.append(kind, **fields)
+        events = j.events()
+        verify_chain(self._key, request_id, events)  # never extend a chain that is already broken
+        prev = events[-1]["_seal"] if events else ""
+        seq, ts = len(events) + 1, round(self.clock(), 3)
+        seal = _seal(self._key, request_id, prev, {"seq": seq, "ts": ts, "kind": kind, **fields})
+        return Journal(self.dir(request_id), lambda: ts).append(kind, _seal=seal, **fields)  # same ts as sealed
 
     @contextmanager
     def locked(self, request_id: str, wait: float = 30.0) -> Iterator[None]:

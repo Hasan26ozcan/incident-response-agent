@@ -161,7 +161,7 @@ class Rig:
         self.tokens = {n: self.roster.add(n, [r]) for n, r in APPROVERS.items()}
         self.notes: list[Notification] = []
         self.gate = ApprovalGate(
-            RequestStore(self.root / "requests", self.clock),
+            RequestStore(self.root / "requests", self.clock, seal_key=secrets.token_bytes(32)),
             self.roster,
             policy,
             CallbackNotifier(lambda n: self.notes.append(n)),

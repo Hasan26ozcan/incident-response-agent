@@ -78,10 +78,10 @@ class Controller:
 
     def deliver(self, report: dict[str, list[Any]]) -> None:
         for rid in self.gate.store.ids():
-            st = self.gate.store.state(rid)
-            if st.pending or st.delivered:
-                continue
             try:
+                st = self.gate.store.state(rid)
+                if st.pending or st.delivered:
+                    continue
                 run = self.engine.state(st.run_id)
                 if run.status == "waiting" and run.waiting_for == WAIT_STEP:
                     payload = approval_payload(st)

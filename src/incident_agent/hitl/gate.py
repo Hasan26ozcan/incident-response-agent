@@ -31,7 +31,7 @@ from incident_agent.durable.journal import LockError
 from incident_agent.hitl.notify import CONFIRM_LEN, Notifier, NotifyResult, build_notification
 from incident_agent.hitl.policy import EscalationPolicy
 from incident_agent.hitl.roster import AuthError, Roster
-from incident_agent.hitl.store import MAX_DENIED_RECORDS, RequestState, RequestStore, check_request_id
+from incident_agent.hitl.store import MAX_DENIED_RECORDS, RequestState, RequestStore, StoreTampered, check_request_id
 from incident_agent.reporting.sanitize import one_line
 
 FINGERPRINT_RE = re.compile(r"[0-9a-f]{20}")
@@ -231,8 +231,8 @@ class ApprovalGate:
                         self._advance_locked(rid)
                         self._notify_locked(rid)
                     after = self.store.state(rid)
-            except LockError:
-                continue
+            except (LockError, StoreTampered):
+                continue  # a tampered request is never advanced or delivered; its run expires closed
             if (after.level, after.status, after.events) != (before.level, before.status, before.events):
                 out.append({"id": rid, "status": after.status, "level": after.level_name})
         return out

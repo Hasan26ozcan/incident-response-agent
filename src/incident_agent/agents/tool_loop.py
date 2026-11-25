@@ -7,15 +7,35 @@ bounded, tool output is wrapped as untrusted data, and every tool-call id always
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from incident_agent.llm import LLMClient
 from incident_agent.tools.toolbox import TOOL_NAMES, IncidentToolbox, ToolError
 
+HARDEN_TOOL_OUTPUT = (
+    True  # Stage 21e: default ON; when True, lines that look like prompt injection are removed from tool output
+)
+
+
+@contextmanager
+def hardened(enabled: bool = True) -> Iterator[None]:
+    """Set tool-output hardening for the code run inside the block (on by default since Stage 21e)."""
+    global HARDEN_TOOL_OUTPUT
+    previous, HARDEN_TOOL_OUTPUT = HARDEN_TOOL_OUTPUT, enabled
+    try:
+        yield
+    finally:
+        HARDEN_TOOL_OUTPUT = previous
+
 
 def wrap_output(text: str) -> str:
     """Mark tool output as untrusted data; neutralise a forged closing tag inside it."""
+    if HARDEN_TOOL_OUTPUT:
+        from incident_agent.security.injection import neutralise
+
+        text = neutralise(text)
     return "<tool_output>\n" + text.replace("</tool_output>", "[/tool_output]") + "\n</tool_output>"
 
 

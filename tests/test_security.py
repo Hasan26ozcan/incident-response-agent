@@ -441,8 +441,6 @@ def test_similar_but_legal_run_ids_pass(tmp_path: Path) -> None:
 EXPECTED = {
     "INJ-04": "exposed",
     "INJ-07": "evaded",
-    "INJ-09": "exposed",
-    "APP-08": "gap",
 }
 
 
@@ -465,8 +463,8 @@ def test_ids_are_unique_and_areas_known(results: list[attacks.Result]) -> None:
 
 def test_summary(results: list[attacks.Result]) -> None:
     s = attacks.summarise(results)
-    assert s["verdicts"] == {"blocked": 29, "exposed": 2, "evaded": 1, "gap": 1, "vulnerable": 0}
-    assert s["vulnerable"] == [] and s["exposed"] == ["INJ-04", "INJ-09"] and s["gaps"] == ["APP-08"]
+    assert s["verdicts"] == {"blocked": 31, "exposed": 1, "evaded": 1, "gap": 0, "vulnerable": 0}
+    assert s["vulnerable"] == [] and s["exposed"] == ["INJ-04"] and s["gaps"] == []
     assert s["evaded"] == ["INJ-07"]
 
 
@@ -513,10 +511,10 @@ def test_attacks_notice_when_a_defence_is_removed(monkeypatch: pytest.MonkeyPatc
         "INJ-06": lambda m: m.setattr(injection, "scan_line", lambda *a, **k: []),
         "INJ-08": lambda m: m.setattr(injection, "scan_line", lambda *a, **k: [injection.Finding("x", "y")]),
         "INJ-10": lambda m: m.setattr(injection, "harden", lambda lines, label="logs": "\n".join(lines)),
-        "INJ-12": lambda m: m.setattr(
-            "incident_agent.agents.tool_loop.hardened", lambda enabled=True: __import__("contextlib").nullcontext()
-        ),
+        "INJ-12": lambda m: m.setattr("incident_agent.agents.tool_loop.HARDEN_TOOL_OUTPUT", False),
         "INJ-13": lambda m: m.setattr(injection, "harden", lambda lines, label="logs": "\n".join(lines)),
+        "INJ-09": lambda m: m.setattr(injection, "harden", lambda lines, label="logs": "\n".join(lines)),
+        "APP-08": lambda m: m.setattr("incident_agent.hitl.store.verify_chain", lambda *a, **k: None),
         "INJ-11": lambda m: (
             m.setattr("incident_agent.hitl.notify.one_line", lambda t, *a, **k: t),
             m.setattr("incident_agent.hitl.gate.one_line", lambda t, *a, **k: t),
@@ -535,8 +533,8 @@ def test_markdown_report(results: list[attacks.Result]) -> None:
     assert md.startswith("# Security test report") and "33 attacks" in md
     for area_title in report.AREAS.values():
         assert f"## {area_title}" in md
-    assert "| APP-08 |" in md and "GAP" in md and "EXPOSED" in md and "## Open items" in md
-    assert "INJ-09" in md.split("## Open items")[1] and "|" not in "x".replace("|", "/")
+    assert "| APP-08 |" in md and "EXPOSED" in md and "## Open items" in md
+    assert "INJ-04" in md.split("## Open items")[1] and "|" not in "x".replace("|", "/")
 
 
 def test_report_lists_no_open_items_when_everything_passes() -> None:

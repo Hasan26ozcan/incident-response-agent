@@ -94,10 +94,10 @@
   "security": {
     "attacks": 33,
     "verdicts": {
-      "blocked": 29,
+      "blocked": 31,
       "evaded": 1,
-      "exposed": 2,
-      "gap": 1,
+      "exposed": 1,
+      "gap": 0,
       "vulnerable": 0
     }
   },

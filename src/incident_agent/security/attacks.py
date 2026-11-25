@@ -216,30 +216,38 @@ def inj_false_positives(_c: Ctx) -> tuple[str, str]:
 @attack(
     "INJ-09",
     "injection",
-    "the LLM prompt builder passes log text through verbatim unless the caller opts in to hardening",
+    "the LLM prompt builder strips injection-looking log lines by default",
 )
 def inj_prompt_exposed(_c: Ctx) -> tuple[str, str]:
     from incident_agent.prompts.builder import build_prompt
 
     evil = _message(next(p for p in corpus.PAYLOADS if p.id == "ov-1"))
     prompt = build_prompt("INC-X", "unknown", ["svc"], "t0", "t1", [evil], {}, [])
+    raw = build_prompt("INC-X", "unknown", ["svc"], "t0", "t1", [evil], {}, [], harden=False)
     if evil in prompt:
+        return "vulnerable", "build_prompt embeds attacker log lines unmodified with the default settings (regression)"
+    if evil not in raw:
         return (
-            "exposed",
-            "build_prompt and the ReAct tool loop embed attacker log lines unmodified by default; hardening is opt-in "
-            "(on in the pipeline, see INJ-12 and INJ-13)",
+            "gap",
+            "control check failed: the unhardened prompt no longer carries the attacker text, so this proves nothing",
         )
-    return "blocked", "build_prompt no longer carries the raw attacker text"
+    return (
+        "blocked",
+        "default prompt drops the attacker line; the opt-out (harden=False) still carries it, so the check can fail",
+    )
 
 
-@attack("INJ-12", "injection", "hardened tool output: attacker lines never reach the model through the ReAct tool loop")
+@attack(
+    "INJ-12",
+    "injection",
+    "tool output (default settings): attacker lines never reach the model through the ReAct tool loop",
+)
 def inj_tool_output(_c: Ctx) -> tuple[str, str]:
     from incident_agent.agents import tool_loop
 
     det = [p for p in corpus.PAYLOADS if p.detectable]
     text = "\n".join([*(p.text for p in det), "ordinary line"])
-    with tool_loop.hardened():
-        out = tool_loop.wrap_output(text)
+    out = tool_loop.wrap_output(text)  # the default settings, nothing opted in
     leaked = [p.id for p in det if p.text in out]
     kept = "ordinary line" in out
     return _ok(
@@ -249,12 +257,12 @@ def inj_tool_output(_c: Ctx) -> tuple[str, str]:
     )
 
 
-@attack("INJ-13", "injection", "build_prompt(harden=True) removes attacker lines")
+@attack("INJ-13", "injection", "build_prompt (default settings) removes attacker lines")
 def inj_prompt_hardened(_c: Ctx) -> tuple[str, str]:
     from incident_agent.prompts.builder import build_prompt
 
     det = [p for p in corpus.PAYLOADS if p.detectable]
-    prompt = build_prompt("INC-X", "unknown", ["svc"], "t0", "t1", [p.text for p in det], {}, [], harden=True)
+    prompt = build_prompt("INC-X", "unknown", ["svc"], "t0", "t1", [p.text for p in det], {}, [])
     leaked = [p.id for p in det if p.text in prompt]
     return _ok(not leaked, f"{len(det)} attack lines absent from the hardened prompt", f"leaked {leaked}")
 
@@ -415,19 +423,30 @@ def app_gate_abuse(c: Ctx) -> tuple[str, str]:
     return _ok(not bad, "all three refused at the gate", f"not refused: {bad}")
 
 
-@attack("APP-08", "approval", "request-store tampering: an 'approved' decision appended by a local actor")
+@attack(
+    "APP-08",
+    "approval",
+    "request-store tampering: an 'approved' decision written into the journal file by a local actor",
+)
 def app_store_tamper(c: Ctx) -> tuple[str, str]:
+    from incident_agent.durable.journal import Journal
+
     rig, run_id, rid = _waiting_rig(c, "app08")
-    rig.gate.store.append(rid, "approved", by="mallory", at=rig.clock.t, comment="forged")
-    rig.gate.store.append(rid, "resolved", outcome="approved", by=["mallory"], at=rig.clock.t, reason="forged")
+    forged = Journal(rig.gate.store.dir(rid), rig.clock)  # a local actor has the file, not the gate's seal key
+    forged.append("approved", by="mallory", at=rig.clock.t, comment="forged")
+    forged.append("resolved", outcome="approved", by=["mallory"], at=rig.clock.t, reason="forged")
     st = _finish(rig, run_id)
     ex = st.results.get("execute") or {}
     if rig.backend.applied:
-        return "gap", (
-            "the request store is the root of trust and is plain JSONL: a forged resolution is delivered and sealed "
-            f"(approved by {ex.get('approved_by')}). Needs a store integrity chain or a separate OS user (not done)."
+        return (
+            "vulnerable",
+            f"a forged resolution was delivered and sealed (approved by {ex.get('approved_by')}) (regression)",
         )
-    return "blocked", "the forged decision was not applied"
+    try:
+        rig.gate.store.state(rid)
+    except Exception as exc:  # noqa: BLE001 - the point is that it is refused
+        return "blocked", f"the forged lines break the store's integrity chain ({type(exc).__name__}); nothing applied"
+    return "gap", "nothing was applied, but the forged lines were not detected as tampering"
 
 
 # ------------------------------------------------------------------------------------------------ input handling

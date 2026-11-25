@@ -82,6 +82,7 @@ def build_prompt(
     metric_anomalies: dict[str, list[str]],
     deploys: list[dict],
     examples: list[dict] | None = None,
+    harden: bool = True,
 ) -> str:
     """Assemble a complete prompt for the incident diagnosis LLM.
 
@@ -95,12 +96,18 @@ def build_prompt(
         metric_anomalies: Mapping of metric name -> anomaly timestamps.
         deploys: List of deploy dicts in the pre-incident window.
         examples: Override few-shot examples (defaults to FEW_SHOT_EXAMPLES).
+        harden: on by default (Stage 21e). Remove log lines that look like prompt injection, fence the rest.
 
     Returns:
         A complete prompt string ready for JSON-mode LLM invocation.
     """
     example_text = _format_examples(examples or FEW_SHOT_EXAMPLES)
-    logs_text = _format_logs(error_logs)
+    if harden:
+        from incident_agent.security.injection import harden as harden_lines
+
+        logs_text = harden_lines(error_logs, "error_logs")
+    else:
+        logs_text = _format_logs(error_logs)
     metrics_text = _format_metrics(metric_anomalies)
     deploys_text = _format_deploys(deploys)
     services_str = ", ".join(services) if services else "unknown"

@@ -13,11 +13,6 @@ AREAS = {
 OWNERS = {
     "INJ-04": "Needs corroboration across logs, metrics and deploys in the diagnosers; not a text-filter problem.",
     "INJ-07": "A semantic classifier (LLM judge) could shrink this; it would itself be attackable.",
-    "INJ-09": (
-        "Hardening is on in the pipeline but off by default elsewhere; "
-        "making it the default changes dataset scores, so it needs the owner's decision."
-    ),
-    "APP-08": "Integrity chain for the request store, or run the gate and the worker as different OS users.",
 }
 ICON = {"blocked": "pass", "exposed": "EXPOSED", "evaded": "evaded", "gap": "GAP", "vulnerable": "FAIL"}
 
@@ -65,12 +60,14 @@ def to_markdown(results: list[Result]) -> str:
         "3. Silence is a refusal: expiry never approves (Stage 18; INJ-02).",
         "4. The sandbox allow-list refuses injected command lines (INP-05).",
         "5. The kill-switch stops runs and backend calls, fails closed and the agent cannot release it (KIL-01..07).",
+        "6. Log and tool text is stripped of injection-looking lines by default (INJ-09, INJ-12, INJ-13).",
+        "7. The request store is an HMAC chain: a line written without the key is refused (APP-08).",
         "",
         "## Limits of this report",
         "",
         "* The detector was tuned on the same corpus it is scored on, so its recall is optimistic; INJ-07 lists what "
         "it misses by design.",
-        "* HMAC approval seals stop unprivileged writers, not a same-user attacker who can read the key file.",
+        "* HMAC seals and the store chain stop writers without the key, not a same-user attacker who can read it.",
         "* The isolation backend in these runs is a plain subprocess; real isolation is Stage 16's selftest.",
         "* Only the rule-based planner and diagnoser were attacked end to end. LLM diagnosers have no recorded "
         "attack results (INJ-09 is a code-level finding).",
