@@ -12,10 +12,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from incident_agent.tools import PROJECT_ROOT, read_deploys, read_logs, read_meta, read_metrics
+from incident_agent.tools import _incident_dir, read_deploys, read_logs, read_meta, read_metrics
 
 MAX_OUTPUT_CHARS = 3500
-_ID = re.compile(r"^INC-\d{3}$")
+_ID = re.compile(r"^(INC|LAB)-\d{3}$")
 
 
 class ToolError(Exception):
@@ -74,7 +74,7 @@ def _describe(exc: ValidationError) -> str:
 
 def _fn(
     name: str, description: str, properties: dict[str, Any] | None = None, required: list[str] | None = None
-) -> dict:
+) -> dict[str, Any]:
     return {
         "type": "function",
         "function": {
@@ -122,7 +122,7 @@ class IncidentToolbox:
     ) -> None:
         if not _ID.match(incident_id):
             raise ValueError(f"invalid incident id: {incident_id!r}")
-        if not (PROJECT_ROOT / "data" / "incidents" / incident_id).is_dir():
+        if not _incident_dir(incident_id).is_dir():
             raise ValueError(f"unknown incident: {incident_id}")
         self.incident_id = incident_id
         self._fail = fail_tools or set()  # fault injection for recovery tests

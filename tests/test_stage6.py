@@ -298,7 +298,7 @@ class TestOrchestratorDispatch:
 
     def test_dispatch_produces_valid_findings(self, agent):
         findings = agent.dispatch_workers("INC-001")
-        for worker_type, finding in findings.items():
+        for finding in findings.values():
             assert isinstance(finding, WorkerFinding)
             WorkerFinding.model_validate(finding.model_dump())
 

@@ -529,8 +529,8 @@ class TestLiveUpdates:
                 _, err = await hub.call_tool("post_update", {"text": "rolled back"})
                 assert not err
                 await hub.wait_for(lambda: hub.cache.invalidated >= 1)
-                assert ("live", FEED) not in hub.cache.keys()
-                assert ("logs", other) in hub.cache.keys()  # unrelated entries survive
+                assert ("live", FEED) not in hub.cache
+                assert ("logs", other) in hub.cache  # unrelated entries survive
                 assert await hub.read_resource("live", FEED) == "rolled back"
                 assert await hub.read_resource("logs", other) == meta
 
@@ -563,13 +563,12 @@ class TestLiveUpdates:
         async def main() -> None:
             async with McpHub(live_targets()) as hub:
                 await hub.read_resource("live", FEED)
-                assert ("live", FEED) in hub.cache.keys()
+                assert ("live", FEED) in hub.cache
                 await hub.call_tool("retire_feed")
                 await hub.wait_for(lambda: not any(r.uri == FEED for s in hub.snapshots for r in s.resources))
-                assert ("live", FEED) not in hub.cache.keys()
+                assert ("live", FEED) not in hub.cache
                 with pytest.raises(HubError):
                     await hub.read_resource("live", FEED)
-                await hub.wait_for(lambda: hub.is_live("live"))
                 assert hub.is_live("live")  # re-subscribed with the new resource list
                 assert any(e.startswith("stale live") for e in hub.events)
 
@@ -582,7 +581,7 @@ class TestLiveUpdates:
                 await hub.wait_for(lambda: "annotate" in hub.negotiate().routes)
                 await hub.read_resource("live", FEED)
                 await hub.call_tool("post_update", {"text": "again"})
-                await hub.wait_for(lambda: ("live", FEED) not in hub.cache.keys())
+                await hub.wait_for(lambda: ("live", FEED) not in hub.cache)
 
         run(main)
 
@@ -691,7 +690,7 @@ class TestFailureInjection:
             hub.cache.put(("f", "fake://a"), "stale")
             async with hub:
                 await hub.wait_for(lambda: hub.relistens == 1)
-                assert ("f", "fake://a") not in hub.cache.keys()
+                assert ("f", "fake://a") not in hub.cache
 
         run(main)
 
@@ -789,7 +788,7 @@ class TestFailureInjection:
             hub.cache.put(("f", "fake://a"), "old")
             async with hub:
                 await hub.wait_for(lambda: any(e.startswith("tools changed") for e in hub.events))
-                assert ("f", "fake://a") not in hub.cache.keys()
+                assert ("f", "fake://a") not in hub.cache
                 assert any(e.startswith("updated f: fake://a (cache entry dropped)") for e in hub.events)
 
         run(main)
@@ -850,3 +849,10 @@ class TestStdio:
             assert hub.opened == hub.closed == 2
 
         run(main)
+
+
+def test_cache_membership_matches_keys() -> None:
+    c = ResourceCache()
+    c.put(("a", "1"), "x")
+    assert ("a", "1") in c and ("a", "2") not in c and "not-a-key" not in c
+    assert (("a", "1") in c) == (("a", "1") in c.keys())  # noqa: SIM118

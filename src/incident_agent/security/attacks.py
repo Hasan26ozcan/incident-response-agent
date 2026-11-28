@@ -626,7 +626,7 @@ def kil_env(c: Ctx) -> tuple[str, str]:
         try:
             guarded.run(
                 __import__("incident_agent.sandbox.backends", fromlist=["ExecSpec"]).ExecSpec("pass", "{}", None)
-            )  # type: ignore[arg-type]
+            )
             ran = True
         except KillSwitchEngaged:
             ran = False

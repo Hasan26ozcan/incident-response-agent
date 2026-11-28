@@ -718,3 +718,13 @@ class TestSchemaValidation:
         cmd_diag = commander.run(diagnosis, findings, "INC-001")
         for wf in cmd_diag.worker_findings:
             WorkerFinding.model_validate(wf.model_dump())
+
+
+def test_cli_report_of_a_swarm_diagnosis_uses_the_wrapped_diagnosis(monkeypatch, tmp_path):
+    """Found by mypy --strict: `--agent swarm --report` passed the commander object where a Diagnosis is needed."""
+    from incident_agent import cli
+
+    cmd = IncidentCommander(confidence_threshold=0.7).run(_make_diagnosis(), _make_worker_findings(), "INC-001")
+    monkeypatch.setenv("REPORT_DIR", str(tmp_path))
+    assert cli._report(cmd, live=False) == 0
+    assert any(tmp_path.rglob("postmortem-inc-001*"))

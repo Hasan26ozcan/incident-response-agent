@@ -6,13 +6,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from incident_agent.agenteval import suite
 
 OUT = suite.ROOT / "eval" / "results" / "agentic.json"
 
 
-def render(report: dict, fail: list[str], notes: list[str]) -> str:
+def render(report: dict[str, Any], fail: list[str], notes: list[str]) -> str:
     lines = [f"agentic eval (dev split, {len(report['ids'])} incidents)"]
     if "planner" in report:
         p = report["planner"]

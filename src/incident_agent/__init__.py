@@ -56,7 +56,7 @@ from incident_agent.agents.orchestrator import (
     OrchestrationState,
     OrchestratorAgent,
 )
-from incident_agent.agents.react_agent import Diagnosis, ReActAgent
+from incident_agent.agents.react_agent import ReActAgent
 from incident_agent.agents.reranker_agent import RerankerAgent
 from incident_agent.agents.retrieval_agent import RetrievalAgent
 from incident_agent.agents.root_cause_agent import RootCauseAgent
@@ -85,6 +85,7 @@ from incident_agent.schemas import (
     TreeOfThoughtResult,
     WorkerFinding,
 )
+from incident_agent.schemas.diagnosis import Diagnosis
 from incident_agent.workflows.plan import Plan, StepFailure
 
 __all__ = [

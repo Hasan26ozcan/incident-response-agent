@@ -30,7 +30,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import IO, Protocol
 
-NETWORK, FILESYSTEM, PROCESSES, ENV, TIME, OUTPUT, CAPS, MEMORY = (
+NETWORK, FILESYSTEM, PROCESSES, ENV, TIME, OUTPUT, CAPS = (
     "network",
     "filesystem",
     "processes",
@@ -38,7 +38,6 @@ NETWORK, FILESYSTEM, PROCESSES, ENV, TIME, OUTPUT, CAPS, MEMORY = (
     "time",
     "output",
     "caps",
-    "memory",
 )
 MB = 1024 * 1024
 DEFAULT_IMAGE = "python:3.13-slim"
@@ -115,26 +114,25 @@ def _limits_preexec(lim: Limits) -> Callable[[], None]:
         import resource
 
         pairs = (
-            (resource.RLIMIT_CPU, lim.cpu_seconds),  # type: ignore[attr-defined]
-            (resource.RLIMIT_AS, lim.memory_bytes),  # type: ignore[attr-defined]
-            (resource.RLIMIT_FSIZE, lim.max_file_bytes),  # type: ignore[attr-defined]
-            (resource.RLIMIT_NOFILE, lim.max_open_files),  # type: ignore[attr-defined]
-            (resource.RLIMIT_CORE, 0),  # type: ignore[attr-defined]
+            (resource.RLIMIT_CPU, lim.cpu_seconds),  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
+            (resource.RLIMIT_AS, lim.memory_bytes),  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
+            (resource.RLIMIT_FSIZE, lim.max_file_bytes),  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
+            (resource.RLIMIT_NOFILE, lim.max_open_files),  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
+            (resource.RLIMIT_CORE, 0),  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
         )
         for which, value in pairs:
             with contextlib.suppress(ValueError, OSError):
-                resource.setrlimit(which, (value, value))  # type: ignore[attr-defined]
+                resource.setrlimit(which, (value, value))  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
 
     return apply
 
 
 def _kill_tree(proc: subprocess.Popen[bytes]) -> None:
     if os.name == "nt":  # pragma: no cover - Windows only
-        taskkill = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "taskkill.exe")
-        subprocess.run([taskkill, "/F", "/T", "/PID", str(proc.pid)], capture_output=True, check=False)  # noqa: S603
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True, check=False)  # noqa: S603, S607  # nosec B607
         return
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        os.killpg(proc.pid, signal.SIGKILL)  # type: ignore[attr-defined]
+        os.killpg(proc.pid, signal.SIGKILL)  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
     with contextlib.suppress(ProcessLookupError, PermissionError):
         proc.kill()
 
@@ -219,7 +217,8 @@ def run_process(
     except OSError as exc:
         return ExecResult(None, b"", f"cannot start: {type(exc).__name__}".encode(), killed="unavailable", backend=name)
     overflow = threading.Event()
-    assert proc.stdout is not None and proc.stderr is not None
+    if proc.stdout is None or proc.stderr is None:
+        raise RuntimeError("the child process has no output pipes")
     out = _Capture(proc.stdout, lim.max_output, overflow)
     err = _Capture(proc.stderr, lim.max_output, overflow)
     threading.Thread(target=_feed, args=(proc, spec.stdin), daemon=True).start()
@@ -266,7 +265,7 @@ def _python_argv(python: str, code: str) -> list[str]:
 
 class ProcessBackend:
     name = "process"
-    guarantees = frozenset({ENV, TIME, OUTPUT} | ({MEMORY} if os.name != "nt" else set()))
+    guarantees = frozenset({ENV, TIME, OUTPUT})
 
     def available(self) -> tuple[bool, str]:
         return True, "always available (weak isolation: no network or file-system isolation)"
@@ -352,7 +351,7 @@ def namespace_script(binds: list[str], setpriv: str, python: str, lim: Limits, l
 
 class NamespaceBackend:
     name = "namespace"
-    guarantees = frozenset({ENV, TIME, OUTPUT, NETWORK, FILESYSTEM, PROCESSES, CAPS, MEMORY})
+    guarantees = frozenset({ENV, TIME, OUTPUT, NETWORK, FILESYSTEM, PROCESSES, CAPS})
 
     def __init__(self) -> None:
         self._probe: tuple[bool, str] | None = None
@@ -413,7 +412,7 @@ def docker_run_argv(docker: str, container: str, image: str, spec: ExecSpec) -> 
     """The exact ``docker run`` command line (pure, so tests can assert every isolation flag)."""
     lim = spec.limits
     mem = f"{max(lim.memory_bytes // MB, 16)}m"
-    tmpfs = f"/tmp:rw,noexec,nosuid,nodev,size={max(lim.tmp_bytes // MB, 1)}m"  # nosec B108
+    tmpfs = f"/tmp:rw,noexec,nosuid,nodev,size={max(lim.tmp_bytes // MB, 1)}m"  # noqa: S108  # nosec B108
     return [
         docker,
         "run",
@@ -451,10 +450,14 @@ def docker_run_argv(docker: str, container: str, image: str, spec: ExecSpec) -> 
         "--user",
         "65534:65534",
         "--workdir",
-        "/tmp",  # nosec B108
+        "/tmp",  # noqa: S108  # nosec B108
         "--pull",
         "never",
         image,
+        # the image's own ENV (GPG_KEY, PYTHON_VERSION, ...) is not the code's business: start from an empty environment
+        "env",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
         "python",
         "-I",
         "-S",
@@ -466,7 +469,7 @@ def docker_run_argv(docker: str, container: str, image: str, spec: ExecSpec) -> 
 
 class DockerBackend:
     name = "docker"
-    guarantees = frozenset({ENV, TIME, OUTPUT, NETWORK, FILESYSTEM, PROCESSES, CAPS, MEMORY})
+    guarantees = frozenset({ENV, TIME, OUTPUT, NETWORK, FILESYSTEM, PROCESSES, CAPS})
 
     def __init__(self, docker: str | None = None, image: str | None = None) -> None:
         self._docker = docker or shutil.which("docker")

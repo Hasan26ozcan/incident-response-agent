@@ -35,7 +35,7 @@ def free_port() -> int:
 
 
 def http(method: str, url: str, body: dict[str, Any] | None = None, timeout: float = 3.0) -> dict[str, Any]:
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310  # nosec B310 - loopback lab URL
         url,
         method=method,
         data=json.dumps(body).encode() if body is not None else None,  # noqa: S310
@@ -64,10 +64,10 @@ class LoadGen:
 
     def _work(self) -> None:
         while not self.stop.is_set():
-            try:
+            with contextlib.suppress(
+                urllib.error.URLError, OSError
+            ):  # error statuses surface in the service's own metrics
                 http("GET", self.url + "/checkout", timeout=4.0)
-            except (urllib.error.URLError, OSError):
-                pass  # error statuses surface in the service's own metrics and logs
             self.stop.wait(1.0 / max(self.rps / 4 * self.mult, 0.1))
 
     def start(self, workers: int = 4) -> None:
@@ -237,10 +237,10 @@ def run_local(scenario_id: str, *, out: Path = LAB_DATA, baseline_s: float = 20.
     base = [sys.executable, "-m", "incident_agent.lab.app", "--host", "127.0.0.1", "--log-dir", str(work)]
     procs = [
         subprocess.Popen([*base, "--service", "payments-stub", "--port", str(pp)], stdout=subprocess.DEVNULL),  # noqa: S603  # nosec B603
-        subprocess.Popen(
+        subprocess.Popen(  # noqa: S603  # nosec B603 - fixed argument list, no shell
             [*base, "--service", "checkout-api", "--port", str(cp), "--dep", purl], stdout=subprocess.DEVNULL
         ),
-    ]  # noqa: S603  # nosec B603
+    ]
     load = LoadGen(curl)
     try:
         wait_up(purl)

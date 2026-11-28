@@ -50,7 +50,7 @@ async def demo(incident_id: str, out: Any = None) -> McpHub:
         say("\n== 3. A live source changes while the agent works")
         say(f"read feed      -> {await hub.read_resource('live', feed)!r}   (cached: {len(hub.cache)} entry)")
         await hub.call_tool("post_update", {"text": "rollback of deploy started"})
-        await hub.wait_for(lambda: ("live", feed) not in hub.cache.keys())
+        await hub.wait_for(lambda: ("live", feed) not in hub.cache)
         say("server pushed 'resource updated' -> the cache entry was dropped, not served stale")
         say(f"read feed      -> {await hub.read_resource('live', feed)!r}")
 

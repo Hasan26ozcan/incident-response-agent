@@ -143,7 +143,7 @@ def kill_self(event: dict[str, Any]) -> None:  # pragma: no cover - the process 
     """Crash hook for demos and tests: die like a power cut (SIGKILL, no cleanup, no atexit)."""
     if os.name == "nt":
         os._exit(137)
-    os.kill(os.getpid(), _signal.SIGKILL)
+    os.kill(os.getpid(), _signal.SIGKILL)  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
 
 
 def crash_after(spec: str) -> Callable[[dict[str, Any]], None]:

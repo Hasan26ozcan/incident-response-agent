@@ -262,7 +262,8 @@ class Service:
     def _disk(self, run_id: str) -> dict[str, Any] | None:
         p = self.runs_dir / run_id / "investigation.json"
         try:
-            return json.loads(p.read_text(encoding="utf-8"))
+            data: dict[str, Any] = json.loads(p.read_text(encoding="utf-8"))
+            return data
         except (OSError, ValueError):
             return None
 

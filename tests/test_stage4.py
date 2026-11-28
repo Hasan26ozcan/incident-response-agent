@@ -403,7 +403,7 @@ class TestReActAgentProducesValidDiagnosis:
         assert len(diagnosis.evidence) >= 1
         assert len(diagnosis.reasoning_steps) >= 1
         assert diagnosis.affected_service
-        assert diagnosis.category or True  # category may be unknown from metadata
+        assert isinstance(diagnosis.category, str)  # may be 'unknown', but it is always a string
         assert diagnosis.recommendation
         assert diagnosis.risk_tier in ("low", "medium", "high")
 

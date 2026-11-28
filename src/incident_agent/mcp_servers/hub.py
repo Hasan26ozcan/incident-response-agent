@@ -124,7 +124,7 @@ class McpHub:
         conn.watch_settled = anyio.Event()
         await self._tg.start(self._run, conn)
         await conn.watch_settled.wait()  # events published before the stream is acknowledged would be lost
-        if conn.state is not ConnState.OPEN:
+        if conn.state is not ConnState.OPEN:  # type: ignore[comparison-overlap]  # the task started above changes the state
             raise ServerUnavailable(f"{key}: could not connect: {conn.error!r}") from conn.error
         self.opened += 1
         assert conn.snapshot is not None

@@ -10,6 +10,8 @@ All outputs are validated Pydantic objects (Stage 4 cross-cutting rule).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from incident_agent.schemas.agent_output import (
@@ -72,7 +74,7 @@ class TreeOfThoughtResult(AgentOutput):
     All fields are validated by Pydantic.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident ID")
     hypotheses: list[Hypothesis] = Field(
         min_length=2,
         description="All generated hypotheses (at least 2 for branching)",
@@ -164,7 +166,7 @@ class TreeOfThoughtResult(AgentOutput):
         """Parse a TreeOfThoughtResult from a JSON string."""
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation, converting Enums to values."""
         data = super().model_dump(*args, **kwargs)
         if isinstance(data.get("risk_tier"), RiskTier):

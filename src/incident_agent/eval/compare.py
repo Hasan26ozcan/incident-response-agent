@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,7 @@ from typing import Any
 from incident_agent.eval.harness import RESULTS_DIR
 
 METRICS = ("root_cause_f1", "evidence_recall", "risk_accuracy", "false_alarm_accuracy", "answered_rate")
-_PER_INCIDENT = {
+_PER_INCIDENT: dict[str, Callable[[dict[str, Any]], float]] = {
     "root_cause_f1": lambda r: r["root_cause_f1"],
     "evidence_recall": lambda r: r["evidence_recall"],
     "risk_accuracy": lambda r: float(r["risk_match"]),
@@ -60,7 +61,7 @@ def paired_bootstrap(deltas: list[float], n_resamples: int = 10000, seed: int = 
     """95 % CI of the mean of paired differences (percentile bootstrap, fixed seed, no numpy needed)."""
     if not deltas:
         return 0.0, 0.0
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311  # seeded bootstrap, not security
     n = len(deltas)
     means = sorted(sum(rng.choices(deltas, k=n)) / n for _ in range(n_resamples))
     return means[int(0.025 * n_resamples)], means[int(0.975 * n_resamples) - 1]

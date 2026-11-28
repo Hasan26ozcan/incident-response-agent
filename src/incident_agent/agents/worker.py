@@ -274,12 +274,14 @@ class DeployHistoryWorker(WorkerAgent):
             "meta": self._read_meta(),
         }
 
-    def _read_meta(self) -> dict:
+    def _read_meta(self) -> dict[str, Any]:
         """Read incident metadata."""
         import json
 
-        path = ROOT / "data" / "incidents" / self.incident_id / "meta.json"
-        return json.loads(path.read_text())
+        from incident_agent.tools import _incident_dir
+
+        meta: dict[str, Any] = json.loads((_incident_dir(self.incident_id) / "meta.json").read_text())
+        return meta
 
     def analyze(self, observation: dict[str, Any]) -> WorkerFinding:
         """Analyze deploy history and produce a WorkerFinding."""

@@ -276,7 +276,7 @@ class IncidentCommander:
         all_evidence: list[EvidenceItem] = list(diagnosis.evidence)
 
         # Add any additional evidence from workers not already in diagnosis
-        for worker_type, finding in worker_findings.items():
+        for finding in worker_findings.values():
             for ev in finding.evidence:
                 # Avoid duplicates by checking source
                 if not any(e.source == ev.source for e in all_evidence):

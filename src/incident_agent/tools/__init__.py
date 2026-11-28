@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _INCIDENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
@@ -20,6 +20,8 @@ def _incident_dir(incident_id: str) -> Path:
     """The data directory of one incident. The id is untrusted (a run input, a CLI argument): no path syntax."""
     if not isinstance(incident_id, str) or not _INCIDENT_ID.fullmatch(incident_id) or ".." in incident_id:
         raise ValueError("incident id must be 1-64 characters of letters, digits, '.', '_' or '-' (no path syntax)")
+    if incident_id.startswith("LAB-"):  # captured from the fault lab (real processes), kept apart from the dataset
+        return PROJECT_ROOT / "data" / "lab" / incident_id
     return PROJECT_ROOT / "data" / "incidents" / incident_id
 
 
@@ -30,10 +32,11 @@ class LogEntry(NamedTuple):
     message: str
 
 
-def read_meta(incident_id: str) -> dict:
+def read_meta(incident_id: str) -> dict[str, Any]:
     """Read and return the meta.json for a given incident."""
     path = _incident_dir(incident_id) / "meta.json"
-    return json.loads(path.read_text())
+    data: dict[str, Any] = json.loads(path.read_text())
+    return data
 
 
 def read_logs(incident_id: str) -> list[LogEntry]:
@@ -58,16 +61,18 @@ def read_logs(incident_id: str) -> list[LogEntry]:
     return entries
 
 
-def read_metrics(incident_id: str) -> dict:
+def read_metrics(incident_id: str) -> dict[str, Any]:
     """Read and return metrics.json for a given incident."""
     path = _incident_dir(incident_id) / "metrics.json"
-    return json.loads(path.read_text())
+    data: dict[str, Any] = json.loads(path.read_text())
+    return data
 
 
-def read_deploys(incident_id: str) -> list[dict]:
+def read_deploys(incident_id: str) -> list[dict[str, Any]]:
     """Read and return deploys.json for a given incident."""
     path = _incident_dir(incident_id) / "deploys.json"
-    return json.loads(path.read_text())
+    data: list[dict[str, Any]] = json.loads(path.read_text())
+    return data
 
 
 def find_error_logs(incident_id: str) -> list[LogEntry]:
@@ -75,14 +80,14 @@ def find_error_logs(incident_id: str) -> list[LogEntry]:
     return [e for e in read_logs(incident_id) if e.level == "ERROR"]
 
 
-def find_metric_spikes(incident_id: str, threshold: float = 300.0) -> list[dict]:
+def find_metric_spikes(incident_id: str, threshold: float = 300.0) -> list[dict[str, Any]]:
     """Return metric data points that exceed the threshold.
 
     Scans all metric series and returns points where value > threshold,
     useful for identifying anomalies like CPU spikes or latency jumps.
     """
     metrics = read_metrics(incident_id)
-    spikes: list[dict] = []
+    spikes: list[dict[str, Any]] = []
     for metric_name, series in metrics.items():
         for point in series:
             if point["value"] > threshold:
@@ -118,7 +123,7 @@ def detect_anomaly_timestamps(incident_id: str) -> dict[str, list[str]]:
     return anomalies
 
 
-def get_recent_deploys(incident_id: str, window_hours: int = 48) -> list[dict]:
+def get_recent_deploys(incident_id: str, window_hours: int = 48) -> list[dict[str, Any]]:
     """Return deploys that occurred within the given window before
     the incident window starts."""
     meta = read_meta(incident_id)

@@ -47,23 +47,31 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "C4", "UP"]
+select = ["E", "F", "I", "W", "C4", "UP", "S", "B", "PLE", "SIM"]
 ignore = [
     "C408",  # dict() calls are intentional for keyword-arg readability in scenario definitions
     "UP017",  # timezone.utc is more readable than datetime.UTC
     "UP042",  # str, Enum is intentional for Pydantic compatibility
+    "SIM108",  # a ternary is not always clearer
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"data/generate_dataset.py" = ["E501", "C408"]
 "src/incident_agent/prompts/few_shot.py" = ["E501"]
+# tests use asserts, fixed fake credentials, loopback http and throw-away processes on purpose
+"tests/*" = ["S101", "S104", "S105", "S106", "S108", "S110", "S113", "S301", "S310", "S311", "S324", "S603", "S607", "B011", "B017", "B018", "B904", "B905", "SIM117", "SIM105", "SIM300"]
+"scripts/*" = ["S101", "S108", "S603", "S607"]
+# seeded generator of the synthetic dataset: reproducibility, not security (output hashes are pinned by tests)
+"data/generate_dataset.py" = ["E501", "C408", "S311", "B007", "SIM108"]
+# `assert x is not None` here only narrows a type for mypy; no security decision depends on it
+"src/incident_agent/mcp_servers/hub.py" = ["S101"]
+"src/incident_agent/memory/episodic.py" = ["S101"]
 
 [tool.mypy]
 files = ["src"]
 python_version = "3.11"
 ignore_missing_imports = true
-warn_return_any = false
-strict = false
+strict = true
+warn_unused_ignores = true
 
 [tool.bandit]
 exclude = [".venv", "__pycache__", ".pytest_cache"]

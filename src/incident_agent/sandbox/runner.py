@@ -13,6 +13,7 @@ Order matters and every refusal happens *before* anything is executed:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import time
@@ -27,7 +28,7 @@ from incident_agent.sandbox.audit import AuditError, AuditLog
 from incident_agent.sandbox.backends import Backend, ExecResult, ExecSpec, Limits
 from incident_agent.sandbox.policy import Decision, evaluate
 
-INCIDENT_RE = re.compile(r"INC-\d{3}")
+INCIDENT_RE = re.compile(r"(INC|LAB)-\d{3}")
 MAX_PAYLOAD = 1_000_000
 COMMANDS_SOURCE = Path(commands.__file__).read_text(encoding="utf-8")
 
@@ -96,7 +97,10 @@ class SandboxRunner:
             if approval is None:
                 msg = f"{decision.reason}; fingerprint {decision.fingerprint}"
                 return self._stop("needs_approval", decision, base, msg)
-            assert decision.fingerprint is not None
+            if (
+                decision.fingerprint is None
+            ):  # never an assert: python -O would strip it and the check below would see None
+                return self._stop("needs_approval", decision, base, "no command fingerprint to bind an approval to")
             why = check_approval(approval, decision.fingerprint, now=self._clock(), is_used=self.audit.nonce_used)
             if why:
                 return self._stop("refused", decision, base, why)
@@ -113,7 +117,8 @@ class SandboxRunner:
             return self._stop("failed", decision, base, "incident data is too large for the sandbox")
         try:
             if high:
-                assert approval is not None
+                if approval is None:
+                    raise RuntimeError("a high-risk command reached execution without an approval")  # fail closed
                 self.audit.record("approval_consumed", nonce=approval.nonce, approved_by=approval.approved_by, **base)
             self.audit.record("execute", fingerprint=decision.fingerprint, tier=decision.tier, apply=apply, **base)
         except AuditError as exc:
@@ -160,7 +165,7 @@ class SandboxRunner:
         return RunResult(status, msg, decision, backend=self.backend.name)
 
     def _safe_record(self, event: str, **fields: Any) -> None:
-        try:
+        with contextlib.suppress(
+            AuditError
+        ):  # nothing more can be refused here; the pre-run record is what gates execution
             self.audit.record(event, **fields)
-        except AuditError:
-            pass  # nothing more can be refused at this point; the pre-run record is what gates execution

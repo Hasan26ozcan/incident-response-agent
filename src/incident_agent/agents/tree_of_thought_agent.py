@@ -48,7 +48,7 @@ class TreeOfThoughtAgent:
         self.num_hypotheses = num_hypotheses
         self.confidence_threshold = confidence_threshold
         self.random_seed = random_seed
-        self._rng = random.Random(random_seed)
+        self._rng = random.Random(random_seed)  # noqa: S311  # seeded sampling for reproducibility, not security
 
     def generate_hypotheses(self, diagnosis: Diagnosis) -> list[Hypothesis]:
         """Generate multiple parallel hypotheses from a diagnosis.

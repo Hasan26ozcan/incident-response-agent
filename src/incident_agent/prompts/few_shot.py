@@ -11,6 +11,8 @@ range of root causes, confidence levels, and risk tiers.
 
 from __future__ import annotations
 
+from typing import Any
+
 from incident_agent.schemas.agent_output import EvidenceItem, EvidenceType, ReasoningStep, RiskTier
 from incident_agent.schemas.diagnosis import Diagnosis
 
@@ -153,7 +155,7 @@ def _memory_leak_example() -> Diagnosis:
 
 # Each example is a pre-built Diagnosis that serializes to
 # the JSON structure the LLM should produce.
-FEW_SHOT_EXAMPLES: list[dict] = [
+FEW_SHOT_EXAMPLES: list[dict[str, Any]] = [
     _cpu_exhaustion_example().model_dump(),
     _db_connection_example().model_dump(),
     _memory_leak_example().model_dump(),

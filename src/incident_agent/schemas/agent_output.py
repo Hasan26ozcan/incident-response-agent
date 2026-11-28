@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -59,13 +60,13 @@ class EvidenceItem(BaseModel):
 class IncidentMetadata(BaseModel):
     """Parsed incident metadata from meta.json."""
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$")
     category: str
     services: list[str] = Field(min_length=1)
     window_start: str
     window_end: str
     severity: str = "unknown"
-    additional_info: dict = Field(default_factory=dict)
+    additional_info: dict[str, Any] = Field(default_factory=dict[str, Any])
 
     @field_validator("category")
     @classmethod
@@ -120,7 +121,7 @@ class WorkerFinding(BaseModel):
     """
 
     worker_type: str = Field(min_length=1, description="Type of worker that produced this finding")
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident ID")
     evidence: list[EvidenceItem] = Field(min_length=1, description="At least one evidence item required")
     reasoning_steps: list[ReasoningStep] = Field(min_length=1, description="At least one reasoning step required")
     confidence: float = Field(ge=0.0, le=1.0, description="Worker's confidence in its finding")
@@ -145,7 +146,7 @@ class AgentOutput(BaseModel):
     schema_version: str = Field(default="1.0")
     produced_at: datetime = Field(default_factory=datetime.utcnow)
     agent_type: str = Field(...)
-    incident_id: str = Field(pattern=r"^INC-\d{3}$")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$")
     confidence: float = Field(ge=0.0, le=1.0)
 
     @field_validator("agent_type")

@@ -10,11 +10,13 @@ response must validate against the Diagnosis Pydantic schema.
 
 from __future__ import annotations
 
+from typing import Any
+
 from incident_agent.prompts.few_shot import FEW_SHOT_EXAMPLES
 from incident_agent.prompts.system_prompt import SYSTEM_PROMPT_TEMPLATE
 
 
-def _format_evidence(evidence: list[dict]) -> str:
+def _format_evidence(evidence: list[dict[str, Any]]) -> str:
     """Format evidence items for the prompt context."""
     if not evidence:
         return "  (none)"
@@ -44,7 +46,7 @@ def _format_metrics(metric_anomalies: dict[str, list[str]]) -> str:
     return "\n".join(lines)
 
 
-def _format_deploys(deploys: list[dict]) -> str:
+def _format_deploys(deploys: list[dict[str, Any]]) -> str:
     """Format deploy entries for the prompt context."""
     if not deploys:
         return "  (no deploys found in pre-incident window)"
@@ -56,7 +58,7 @@ def _format_deploys(deploys: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_examples(examples: list[dict] | None = None) -> str:
+def _format_examples(examples: list[dict[str, Any]] | None = None) -> str:
     """Format few-shot examples for the system prompt."""
     ex = examples or FEW_SHOT_EXAMPLES
     lines = []
@@ -80,8 +82,8 @@ def build_prompt(
     window_end: str,
     error_logs: list[str],
     metric_anomalies: dict[str, list[str]],
-    deploys: list[dict],
-    examples: list[dict] | None = None,
+    deploys: list[dict[str, Any]],
+    examples: list[dict[str, Any]] | None = None,
     harden: bool = True,
 ) -> str:
     """Assemble a complete prompt for the incident diagnosis LLM.

@@ -1,0 +1,137 @@
+name: Security and quality
+
+# Stage 21h. Everything here is a gate: a finding fails the build. Pinned action versions; read-only token.
+# SonarCloud runs only when the repository has a SONAR_TOKEN secret (and a SONAR_ORGANIZATION variable); the rest needs nothing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 4 * * 1"  # weekly: new advisories appear without a commit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]" semgrep radon vulture detect-secrets
+
+      - name: mypy --strict on every platform the code claims to support
+        run: |
+          mypy --python-version 3.12 --platform linux
+          mypy --python-version 3.12 --platform win32
+          mypy --python-version 3.12 --platform darwin
+
+      - name: bandit (all severities, project config)
+        run: bandit -c bandit.yml -r src
+
+      - name: semgrep, project rules (offline) and the community packs
+        run: |
+          semgrep --config security/semgrep-rules.yml --metrics=off --error src
+          semgrep --config p/python --config p/owasp-top-ten --metrics=off --error src
+
+      - name: complexity gate (no function above grade E; the E/D list is tracked in docs/STAGE21H_AUDIT.md)
+        run: |
+          radon cc src -n F -s | tee /tmp/cc.txt
+          test ! -s /tmp/cc.txt
+
+      - name: secrets (detect-secrets against the reviewed baseline)
+        run: |
+          git ls-files -z | grep -zv -E '^(data/|\.secrets\.baseline$)' | xargs -0 detect-secrets-hook --baseline .secrets.baseline
+
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: pip-audit on the resolved project dependencies
+        run: |
+          pip install pip-audit
+          pip install -e ".[dev]"
+          pip-audit --strict --skip-editable
+
+  trivy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan (vulnerabilities, secrets, misconfiguration)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          skip-dirs: data,eval,.cache
+
+      - name: Build the service image
+        run: docker build -t incident-agent-service:ci -f deploy/Dockerfile .
+
+      - name: The service container runs as a non-root user
+        run: |
+          user=$(docker run --rm --entrypoint whoami incident-agent-service:ci)
+          [ "$user" != "root" ] || (echo "the service runs as root" && exit 1)
+
+      - name: Trivy scan of the service image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: incident-agent-service:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  dockerfile-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: deploy/Dockerfile
+          failure-threshold: warning
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/sandbox/Dockerfile
+          failure-threshold: warning
+
+  sonarcloud:
+    # Quality gate: bugs, vulnerabilities, security hotspots, code smells, duplication, coverage on new code.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Sonar needs history for new-code detection
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Tests with coverage and a Sonar-readable report
+        run: pytest -q --cov=incident_agent --cov-report=xml:coverage.xml
+      - name: SonarCloud scan
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.qualitygate.wait=true

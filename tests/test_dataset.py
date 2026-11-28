@@ -206,7 +206,7 @@ class TestFalseAlarm:
         (verified via the generated metrics shape)."""
         metrics = load_incident_files("INC-019")["metrics"]
         # Verify all metric series have data points
-        for k, v in metrics.items():
+        for _k, v in metrics.items():
             assert len(v) > 0
 
 

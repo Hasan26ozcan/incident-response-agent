@@ -10,6 +10,8 @@ All outputs are validated Pydantic objects (Stage 4 cross-cutting rule).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from incident_agent.schemas.agent_output import (
@@ -61,7 +63,7 @@ class DebateOutcome(AgentOutput):
     All fields are validated by Pydantic.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident ID")
     original_diagnosis: Diagnosis = Field(description="The initial diagnosis before debate")
     root_cause_arguments: list[Argument] = Field(
         min_length=1,
@@ -155,6 +157,6 @@ class DebateOutcome(AgentOutput):
         """Parse a DebateOutcome from a JSON string."""
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation."""
         return super().model_dump(*args, **kwargs)

@@ -257,7 +257,7 @@ class TestTreeOfThoughtResultSchema:
         agent = TreeOfThoughtAgent()
         result = agent.run(diagnosis)
         assert len(result.hypothesis_scores) >= 2
-        for h_id, score in result.hypothesis_scores.items():
+        for score in result.hypothesis_scores.values():
             assert 0.0 <= score <= 1.0
 
     def test_tot_result_accuracy_improvement_bounds(self):

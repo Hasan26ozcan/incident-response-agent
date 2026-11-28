@@ -14,6 +14,8 @@ See openspec/agent-responsibility-matrix.md § Cross-cutting rules
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field, field_validator
 
 from incident_agent.schemas.agent_output import (
@@ -32,7 +34,7 @@ class Diagnosis(AgentOutput):
     All fields are validated by Pydantic at construction time.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident ID")
     root_cause: str = Field(min_length=10, description="Root cause description, at least 10 chars")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
     evidence: list[EvidenceItem] = Field(min_length=1, description="At least one evidence item required")
@@ -119,7 +121,7 @@ class Diagnosis(AgentOutput):
         """
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation, converting Enums to values.
 
         Useful for LLM tool-call payloads where enum values must

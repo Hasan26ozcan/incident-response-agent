@@ -278,12 +278,13 @@ def check_redaction_with_leaky_tracer() -> bool:
     """Negative control body: same probe, but spans bypass redaction. Must report a leak (returns False)."""
     from incident_agent.observe import trace as tmod
 
-    orig_clean, orig_redact = tmod.clean_value, tmod.redact
-    tmod.clean_value, tmod.redact = (lambda value, depth=0: value), (lambda text: text)  # type: ignore[assignment]
+    ns = vars(tmod)  # the module's own namespace: the functions are imported names there, not exported attributes
+    orig_clean, orig_redact = ns["clean_value"], ns["redact"]
+    ns["clean_value"], ns["redact"] = (lambda value, depth=0: value), (lambda text: text)
     try:
         return check_redaction()
     finally:
-        tmod.clean_value, tmod.redact = orig_clean, orig_redact
+        ns["clean_value"], ns["redact"] = orig_clean, orig_redact
 
 
 def check_never_escalates() -> bool:

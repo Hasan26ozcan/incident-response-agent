@@ -11,7 +11,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -51,6 +52,28 @@ _STOP = {
 }
 _FALSE_ALARM_MARKERS = ("false alarm", "no incident", "no real incident", "not an incident")
 _TAG = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+_CLIENT_OVERRIDE: Any = None
+
+
+@contextmanager
+def use_client(client: Any) -> Iterator[None]:
+    """Make the llm_* adapter factories built inside this block share ``client`` (tracing, cascade, windowing...)."""
+    global _CLIENT_OVERRIDE
+    previous, _CLIENT_OVERRIDE = _CLIENT_OVERRIDE, client
+    try:
+        yield
+    finally:
+        _CLIENT_OVERRIDE = previous
+
+
+def shared_client() -> Any:
+    if _CLIENT_OVERRIDE is not None:
+        return _CLIENT_OVERRIDE
+    from incident_agent.llm import build_client
+
+    return build_client()
 
 
 @dataclass
@@ -115,7 +138,7 @@ def evidence_recall(pred: list[str], gold: list[str]) -> float:
     return hit / len(gold)
 
 
-def score_one(gold: dict, result: DiagnosisResult, error: str = "") -> IncidentScore:
+def score_one(gold: dict[str, Any], result: DiagnosisResult, error: str = "") -> IncidentScore:
     claims_false_alarm = any(m in result.root_cause.lower() for m in _FALSE_ALARM_MARKERS)
     is_fa = bool(gold.get("is_false_alarm"))
     return IncidentScore(
@@ -183,9 +206,10 @@ def evaluate(
     ids: list[str] | None = None,
     on_result: Callable[[IncidentScore, DiagnosisResult], None] | None = None,
     skip: dict[str, IncidentScore] | None = None,
-) -> dict:
+    pattern: str = "INC-*.json",
+) -> dict[str, Any]:
     """Run `diagnose` over gold incidents. `skip` holds already-finished scores (for --resume)."""
-    paths = sorted((gold_dir or GOLD_DIR).glob("INC-*.json"))
+    paths = sorted((gold_dir or GOLD_DIR).glob(pattern))
     if ids:
         known = {p.stem for p in paths}
         unknown = sorted(set(ids) - known)
@@ -234,9 +258,9 @@ def make_llm_react(
 ) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the LLM ReAct agent (needs GROQ_API_KEY; responses are disk-cached)."""
     from incident_agent.agents.llm_react_agent import LLMReActAgent
-    from incident_agent.llm import TrackingClient, build_client
+    from incident_agent.llm import TrackingClient
 
-    shared = build_client()  # shared so cache/fallback state spans the whole run
+    shared = shared_client()  # shared so cache/fallback state spans the whole run
     factory = None
     if toolbox == "mcp":  # Stage 13: the same five tools, served by the MCP servers (identical output and prompts)
         from incident_agent.mcp_servers.client import McpToolbox
@@ -279,9 +303,9 @@ def make_llm_orchestrator(
 ) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the LLM orchestrator-workers system (same scoring, same accounting)."""
     from incident_agent.agents.llm_orchestrator import LLMOrchestrator
-    from incident_agent.llm import TrackingClient, build_client
+    from incident_agent.llm import TrackingClient
 
-    shared = build_client()
+    shared = shared_client()
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
@@ -321,9 +345,9 @@ def make_llm_swarm(
 ) -> Callable[[str], DiagnosisResult]:
     """Adapter factory for the hierarchical swarm (commander over orchestrator over workers)."""
     from incident_agent.agents.swarm import HierarchicalSwarm
-    from incident_agent.llm import TrackingClient, build_client
+    from incident_agent.llm import TrackingClient
 
-    shared = build_client()
+    shared = shared_client()
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
@@ -382,9 +406,9 @@ def make_llm_debate(
 ) -> Callable[[str], DiagnosisResult]:
     """Stage 8 adapter: orchestrator, then defender-vs-examiner debate. Re-uses cached orchestrator calls."""
     from incident_agent.agents.llm_debate import DebatedOrchestrator
-    from incident_agent.llm import TrackingClient, build_client
+    from incident_agent.llm import TrackingClient
 
-    shared = build_client()
+    shared = shared_client()
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)
@@ -423,9 +447,9 @@ def make_llm_tot(
 ) -> Callable[[str], DiagnosisResult]:
     """Stage 9 adapter: orchestrator, then tree-of-thought branching. Re-uses cached orchestrator calls."""
     from incident_agent.agents.tree_of_thought import ToTOrchestrator
-    from incident_agent.llm import TrackingClient, build_client
+    from incident_agent.llm import TrackingClient
 
-    shared = build_client()
+    shared = shared_client()
 
     def run(incident_id: str) -> DiagnosisResult:
         client = TrackingClient(shared)

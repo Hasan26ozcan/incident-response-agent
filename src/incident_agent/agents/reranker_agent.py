@@ -103,7 +103,7 @@ class RerankerAgent:
 
         # Step 4: Build pre-rerank SearchHit list
         pre_rankings: list[SearchHit] = []
-        for rank, hit in enumerate(hybrid_result.fused_rankings):
+        for _rank, hit in enumerate(hybrid_result.fused_rankings):
             pre_rankings.append(
                 SearchHit(
                     incident_id=hit.incident_id,

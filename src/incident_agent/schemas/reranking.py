@@ -9,6 +9,8 @@ All outputs are validated Pydantic objects (Stage 4 cross-cutting rule).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from incident_agent.schemas.agent_output import AgentOutput
@@ -22,7 +24,7 @@ class RelevanceDelta(BaseModel):
     score of each document relative to the original RRF score.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident identifier")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident identifier")
     rrf_score: float = Field(ge=0.0, description="Original RRF fused score")
     cross_encoder_score: float = Field(ge=0.0, description="Cross-encoder reranked score")
     delta: float = Field(description="Difference: cross_encoder_score - rrf_score")
@@ -30,7 +32,7 @@ class RelevanceDelta(BaseModel):
 
     @field_validator("delta")
     @classmethod
-    def delta_is_difference(cls, v: float, info) -> float:
+    def delta_is_difference(cls, v: float, info: Any) -> float:
         """Delta should reflect cross_encoder_score - rrf_score."""
         return v
 
@@ -132,6 +134,6 @@ class RerankedResult(AgentOutput):
         """Parse a RerankedResult from a JSON string."""
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation."""
         return super().model_dump(*args, **kwargs)

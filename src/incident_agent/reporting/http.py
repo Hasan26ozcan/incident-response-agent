@@ -87,10 +87,10 @@ class HttpClient:
         raw = {k.lower(): v for k, v in headers.items()}.get("retry-after")
         if raw is not None:
             try:
-                return min(max(float(raw), 0.0), self.max_retry_after)
+                return float(min(max(float(raw), 0.0), self.max_retry_after))
             except ValueError:
                 pass
-        return min(self.backoff * 2 ** (attempt - 1), self.max_retry_after)
+        return float(min(self.backoff * 2 ** (attempt - 1), self.max_retry_after))
 
     def request(
         self,

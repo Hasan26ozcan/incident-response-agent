@@ -63,7 +63,7 @@ class ReActAgent:
         self.max_replans = max_replans
         self.diagnosis: Diagnosis | None = None
 
-    def observe(self, incident_id: str) -> dict:
+    def observe(self, incident_id: str) -> dict[str, Any]:
         """Step 1: Gather all incident data."""
         meta = read_meta(incident_id)
         errors = find_error_logs(incident_id)
@@ -76,7 +76,7 @@ class ReActAgent:
             "deploys": deploys,
         }
 
-    def reason(self, observation: dict) -> list[str]:
+    def reason(self, observation: dict[str, Any]) -> list[str]:
         """Step 2: Analyze observations and build reasoning chain."""
         steps: list[str] = []
         meta = observation["meta"]
@@ -100,7 +100,7 @@ class ReActAgent:
 
         return steps
 
-    def act(self, observation: dict, reasoning: list[str]) -> Diagnosis:
+    def act(self, observation: dict[str, Any], reasoning: list[str]) -> Diagnosis:
         """Step 3: Produce a Pydantic-validated Diagnosis.
 
         All evidence items and reasoning steps are constructed
@@ -216,7 +216,7 @@ class ReActAgent:
         """
         return generate_plan(incident_id, strategy=strategy)
 
-    def execute_plan(self, plan: Plan, observation: dict) -> dict[str, Any]:
+    def execute_plan(self, plan: Plan, observation: dict[str, Any]) -> dict[str, Any]:
         """Execute all steps in a plan, collecting observations.
 
         Stage 5: executes each PlanStep, raising StepFailure
@@ -273,7 +273,7 @@ class ReActAgent:
 
         return results
 
-    def replan(self, failed_step: str, current_plan: Plan, observation: dict) -> Plan:
+    def replan(self, failed_step: str, current_plan: Plan, observation: dict[str, Any]) -> Plan:
         """Rebuild the plan from failure feedback.
 
         Stage 5: when a step fails, the agent replans by
@@ -415,7 +415,7 @@ class ReActAgent:
     def _infer_root_cause(
         self,
         error_messages: list[str],
-        anomalies: dict,
+        anomalies: dict[str, Any],
         category: str,
     ) -> str:
         """Infer root cause from error patterns and anomalies."""

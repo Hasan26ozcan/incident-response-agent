@@ -130,8 +130,8 @@ def _child_env() -> dict[str, str]:
 def _limits() -> None:  # pragma: no cover - runs in the child after fork, POSIX only
     import resource
 
-    resource.setrlimit(resource.RLIMIT_CPU, (CPU_LIMIT_S, CPU_LIMIT_S))
-    resource.setrlimit(resource.RLIMIT_AS, (MEMORY_LIMIT_BYTES, MEMORY_LIMIT_BYTES))
+    resource.setrlimit(resource.RLIMIT_CPU, (CPU_LIMIT_S, CPU_LIMIT_S))  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
+    resource.setrlimit(resource.RLIMIT_AS, (MEMORY_LIMIT_BYTES, MEMORY_LIMIT_BYTES))  # type: ignore[attr-defined,unused-ignore]  # POSIX-only; guarded at runtime
 
 
 _CHILD = (

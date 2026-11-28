@@ -94,13 +94,16 @@ def _report(diagnosis: Diagnosis | CommanderDiagnosis, *, live: bool) -> int:
     """Stage 15: publish the post-mortem and notify Slack (local files unless ``--report-live``)."""
     from incident_agent.reporting import ConfigError, build_reporter
 
+    if isinstance(diagnosis, CommanderDiagnosis):
+        diagnosis = (
+            diagnosis.diagnosis
+        )  # the commander wraps the technical diagnosis; the post-mortem is built from that
     try:
         reporter = build_reporter(live=live)
     except ConfigError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-    report_diagnosis = diagnosis.diagnosis if isinstance(diagnosis, CommanderDiagnosis) else diagnosis
-    result = reporter.report(report_diagnosis)
+    result = reporter.report(diagnosis)
     print(f"\nreport ({'LIVE' if live else 'local files'}: {reporter.describe()})")
     if result.wiki:
         print(f"  wiki:  {result.wiki.action} {result.wiki.url}")

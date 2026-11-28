@@ -64,7 +64,7 @@ def grade(doc: KBDoc, entry: Mapping[str, Any]) -> int:
 
 
 def _dcg(grades: Sequence[int]) -> float:
-    return sum((2**g - 1) / math.log2(i + 2) for i, g in enumerate(grades))
+    return float(sum((2**g - 1) / math.log2(i + 2) for i, g in enumerate(grades)))
 
 
 def score_ranking(ranked_ids: Sequence[str], docs: Mapping[str, KBDoc], entry: Mapping[str, Any]) -> dict[str, float]:

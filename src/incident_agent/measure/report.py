@@ -23,7 +23,7 @@ def load(path: Path) -> dict[str, Any]:
 def bootstrap_ci(values: list[float], seed: int = 7) -> tuple[float, float]:
     if not values:
         return (0.0, 0.0)
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311  # seeded bootstrap, not security
     means = sorted(statistics.fmean(rng.choices(values, k=len(values))) for _ in range(N_BOOT))
     return (round(means[int(0.025 * N_BOOT)], 3), round(means[int(0.975 * N_BOOT) - 1], 3))
 

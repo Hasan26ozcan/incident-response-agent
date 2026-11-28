@@ -281,7 +281,7 @@ class Live:
         while time.time() < end:
             _c, body = self.call("GET", f"/api/runs/{run_id}", self.read)
             if body.get("status") in status:
-                return body  # type: ignore[no-any-return]
+                return body
             time.sleep(0.1)
         raise AssertionError(f"run {run_id} never reached {status}: {str(body)[:200]}")
 

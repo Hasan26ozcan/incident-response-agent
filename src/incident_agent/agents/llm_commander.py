@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -247,7 +247,9 @@ class LLMIncidentCommander:
         self.risk_guard = risk_guard
 
     # -- review ---------------------------------------------------------------
-    def _review(self, incident_id: str, meta: str, diagnosis: Diagnosis, outcomes: list[WorkerOutcome], sig: Signals):
+    def _review(
+        self, incident_id: str, meta: str, diagnosis: Diagnosis, outcomes: list[WorkerOutcome], sig: Signals
+    ) -> Any:
         diag = {
             "root_cause": diagnosis.root_cause,
             "category": diagnosis.category,

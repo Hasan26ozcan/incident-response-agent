@@ -1,0 +1,77 @@
+rules:
+  - id: no-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess with shell=True lets input become shell syntax; pass an argument list
+    pattern-either:
+      - pattern: subprocess.$F(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+  - id: no-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: eval/exec of dynamic text
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+  - id: no-unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    message: pickle/marshal/yaml.load on untrusted data runs code
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: marshal.loads(...)
+      - pattern: yaml.load(...)
+      - pattern: yaml.unsafe_load(...)
+  - id: no-tls-verify-off
+    languages: [python]
+    severity: ERROR
+    message: TLS verification disabled
+    pattern-either:
+      - pattern: requests.$F(..., verify=False, ...)
+      - pattern: httpx.$F(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+  - id: weak-hash-for-security
+    languages: [python]
+    severity: WARNING
+    message: md5/sha1 are not collision resistant; use sha256 or better (fine only for non-security fingerprints, then say so)
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+  - id: insecure-temp-file
+    languages: [python]
+    severity: ERROR
+    message: tempfile.mktemp is race-prone; use mkstemp / TemporaryDirectory
+    pattern: tempfile.mktemp(...)
+  - id: no-bare-except-pass
+    languages: [python]
+    severity: WARNING
+    message: an exception swallowed silently hides failures (count it or log it)
+    pattern: |
+      try:
+          ...
+      except Exception:
+          pass
+  - id: xml-external-entities
+    languages: [python]
+    severity: ERROR
+    message: parse untrusted XML with defusedxml
+    pattern-either:
+      - pattern: xml.etree.ElementTree.parse(...)
+      - pattern: xml.etree.ElementTree.fromstring(...)
+      - pattern: xml.dom.minidom.parseString(...)
+  - id: plain-http-url-to-external-host
+    languages: [python]
+    severity: WARNING
+    message: plain http:// to a non-loopback host
+    pattern-regex: '["'']http://(?!127\.0\.0\.1|localhost|0\.0\.0\.0|\{)[A-Za-z0-9]'
+  - id: random-for-secrets
+    languages: [python]
+    severity: ERROR
+    message: random is not a CSPRNG; tokens/keys/nonces must use secrets
+    patterns:
+      - pattern: $T = random.$F(...)
+      - metavariable-regex:
+          metavariable: $T
+          regex: '.*(token|secret|key|nonce|password).*'

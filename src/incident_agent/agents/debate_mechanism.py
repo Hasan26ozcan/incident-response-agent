@@ -128,7 +128,7 @@ class DebateMechanism:
         forensic_challenges = self.forensic_examiner.build_challenges(diagnosis)
 
         # Step 3: Debate rounds — agents respond to each other
-        for round_num in range(self.debate_rounds):
+        for _round in range(self.debate_rounds):
             # Root cause responds to forensic challenges
             for challenge in forensic_challenges:
                 if challenge.confidence > 0.6:

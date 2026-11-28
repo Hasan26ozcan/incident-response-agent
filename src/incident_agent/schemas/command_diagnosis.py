@@ -15,6 +15,8 @@ Pydantic object.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field, field_validator
 
 from incident_agent.schemas.agent_output import (
@@ -41,7 +43,7 @@ class CommanderDiagnosis(AgentOutput):
     All fields are validated by Pydantic at construction time.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident ID")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident ID")
     narrative: str = Field(min_length=20, description="Unified incident narrative")
     escalation_decision: str = Field(
         min_length=1,
@@ -129,7 +131,7 @@ class CommanderDiagnosis(AgentOutput):
         """Parse a CommanderDiagnosis from a JSON string."""
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation, converting Enums to values."""
         data = super().model_dump(*args, **kwargs)
         if isinstance(data.get("risk_tier"), RiskTier):

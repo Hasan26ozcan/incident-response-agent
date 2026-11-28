@@ -53,7 +53,7 @@ class Service:
             "rps": 0.0,
         }
         self.deploys: list[dict[str, str]] = []
-        self.rng = random.Random(7)
+        self.rng = random.Random(7)  # noqa: S311  # fixed seed: reproducible synthetic load
         self.n = 0
         self.stop = threading.Event()
         self.log_file: Path | None = None

@@ -39,6 +39,10 @@ class ResourceCache:
     def keys(self) -> list[Key]:
         return list(self._entries)
 
+    def __contains__(self, key: object) -> bool:
+        """Stored (not necessarily fresh): the same answer as ``key in cache.keys()``, without building a list."""
+        return key in self._entries
+
     def _is_stale(self, entry: _Entry) -> bool:
         return self._clock() - entry.stored_at >= self.ttl
 

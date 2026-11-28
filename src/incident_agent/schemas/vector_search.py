@@ -8,6 +8,8 @@ All outputs are validated Pydantic objects (Stage 4 cross-cutting rule).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from incident_agent.schemas.agent_output import AgentOutput
@@ -16,11 +18,11 @@ from incident_agent.schemas.agent_output import AgentOutput
 class SearchHit(BaseModel):
     """A single search result from any ranker."""
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident identifier")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident identifier")
     score: float = Field(ge=0.0, description="Relevance score")
     ranker_source: str = Field(min_length=1, description="Source of the ranking ('bm25', 'dense', or 'rrf')")
     rank: int = Field(ge=1, description="Rank position in the result list")
-    metadata: dict = Field(default_factory=dict, description="Additional result metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict[str, Any], description="Additional result metadata")
 
     @field_validator("score")
     @classmethod
@@ -40,7 +42,7 @@ class HybridSearchResult(AgentOutput):
     All fields are validated by Pydantic.
     """
 
-    incident_id: str = Field(pattern=r"^INC-\d{3}$", description="Incident being searched for")
+    incident_id: str = Field(pattern=r"^(INC|LAB)-\d{3}$", description="Incident being searched for")
     query: str = Field(min_length=1, description="Search query")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Retrieval confidence score")
     bm25_results: list[SearchHit] = Field(
@@ -102,6 +104,6 @@ class HybridSearchResult(AgentOutput):
         """Parse a HybridSearchResult from a JSON string."""
         return cls.model_validate_json(data)
 
-    def model_dump(self, *args, **kwargs) -> dict:
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Return a dict representation."""
         return super().model_dump(*args, **kwargs)
