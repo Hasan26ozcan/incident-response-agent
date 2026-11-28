@@ -32,7 +32,7 @@ from incident_agent.security.signing import ApprovalSigner, load_or_create_key
 RUN_ID_RE = re.compile(r"[a-z]{3}-\d{3}-\d{6,12}(-\d+)?")
 ACTIVE = ("queued", "running")
 OPEN = ("queued", "running", "waiting")
-TERMINAL = ("completed", "failed", "cancelled")
+TERMINAL = ("completed", "failed", "cancelled", "interrupted")
 
 
 @dataclass
@@ -87,11 +87,13 @@ class Service:
             "control_errors": 0,
             "notify_failed": 0,
             "write_failed": 0,
+            "recovered_interrupted": 0,
         }
         self.gate: ApprovalGate | None = None
         self.controller: Controller | None = None
         if cfg.mode == "assist":
             self._init_assist()
+        self._recover()
 
     # ------------------------------------------------------------------------------------------ assist mode
 
@@ -114,6 +116,27 @@ class Service:
             deps.backend_factory = self.cfg.backend_factory
         self.engine = Engine(incident_workflow(deps), self.runs_dir, poll_interval=0.1)
         self.controller = Controller(self.gate, self.engine, signer=signer)
+
+    def _recover(self) -> None:
+        """After a restart the job table is rebuilt from disk: finished runs stay visible, runs that were waiting for
+        a human can still be completed, and runs the crash cut short are reported as interrupted (never silently lost)."""
+        for d in sorted(self.runs_dir.iterdir()):
+            if not (d.is_dir() and RUN_ID_RE.fullmatch(d.name)):
+                continue
+            disk = self._disk(d.name)
+            inc = "-".join(d.name.split("-")[:2]).upper()
+            job: dict[str, Any] = {
+                "run_id": d.name,
+                "incident_id": inc,
+                "by": "recovered",
+                "finished": self.cfg.clock(),
+            }
+            if disk is None:
+                job.update(status="interrupted", error="the service stopped while this run was in progress")
+                self.counters["recovered_interrupted"] += 1
+            else:
+                job.update(status=disk.get("status", "failed"), summary=disk.get("summary"))
+            self.jobs[d.name] = job
 
     # ------------------------------------------------------------------------------------------ lifecycle
 

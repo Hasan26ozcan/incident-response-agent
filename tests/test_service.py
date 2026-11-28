@@ -344,3 +344,18 @@ class TestOperations:
             assert all("gsk_" not in json.dumps(m) for m in r.sender.sent)
         finally:
             r.close()
+
+
+class TestRestart:
+    def test_finished_runs_survive_and_cut_short_runs_are_marked(self, tmp_path):
+        r = Rig(tmp_path)
+        _c, b = r.call("POST", "/api/incidents", r.sub, {"incident_id": "LAB-002"})
+        r.wait(b["run_id"], ("completed",))
+        (r.svc.runs_dir / "lab-001-1700000000").mkdir()  # a run whose process died before it wrote its result
+        r.close()
+        again = Service(ServiceConfig(root=tmp_path / "svc"))
+        assert again.get_run(b["run_id"])[1]["status"] == "completed"
+        code, body = again.get_run("lab-001-1700000000")
+        assert code == 200 and body["status"] == "interrupted" and "stopped" in body["error"]
+        assert again.counters["recovered_interrupted"] == 1
+        assert {x["run_id"] for x in again.list_runs()["runs"]} >= {b["run_id"], "lab-001-1700000000"}
